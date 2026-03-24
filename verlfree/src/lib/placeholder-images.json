@@ -1,0 +1,28 @@
+{
+  "placeholderImages": [
+    {
+      "id": "hero-mockup",
+      "description": "Abstract tech UI verification mockup",
+      "imageUrl": "https://picsum.photos/seed/tech-mock/1200/800",
+      "imageHint": "tech dashboard"
+    },
+    {
+      "id": "avatar-1",
+      "description": "Freelancer Profile 1",
+      "imageUrl": "https://picsum.photos/seed/freelancer1/150/150",
+      "imageHint": "person profile"
+    },
+    {
+      "id": "avatar-2",
+      "description": "Freelancer Profile 2",
+      "imageUrl": "https://picsum.photos/seed/freelancer2/150/150",
+      "imageHint": "person profile"
+    },
+    {
+      "id": "avatar-3",
+      "description": "Freelancer Profile 3",
+      "imageUrl": "https://picsum.photos/seed/freelancer3/150/150",
+      "imageHint": "person profile"
+    }
+  ]
+}

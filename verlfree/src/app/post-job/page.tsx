@@ -1,0 +1,279 @@
+
+"use client";
+
+import { useState } from "react";
+import Navbar from "@/components/layout/Navbar";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
+import { Card, CardContent } from "@/components/ui/card";
+import { 
+  ArrowRight, 
+  ArrowLeft, 
+  Sparkles, 
+  CheckCircle2, 
+  Wallet,
+  Calendar as CalendarIcon
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
+export default function PostJob() {
+  const [step, setStep] = useState(1);
+  const [loadingCriteria, setLoadingCriteria] = useState(false);
+  const { toast } = useToast();
+  
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    category: "",
+    budget: "",
+    deadline: "",
+    criteria: "",
+  });
+
+  const totalSteps = 4;
+  const progress = (step / totalSteps) * 100;
+
+  const handleNext = () => setStep(s => Math.min(s + 1, totalSteps));
+  const handleBack = () => setStep(s => Math.max(s - 1, 1));
+
+  const generateCriteria = async () => {
+    if (!formData.category || !formData.description) {
+      toast({
+        title: "Missing Info",
+        description: "Please provide a category and description first.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setLoadingCriteria(true);
+    try {
+      const result = await aiGenerateJobCriteria({
+        jobCategory: formData.category,
+        jobDescription: formData.description,
+      });
+      setFormData({ ...formData, criteria: result.suggestedCriteria.join("\n") });
+      toast({
+        title: "Criteria Generated",
+        description: "AI has suggested success criteria based on your job details.",
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to generate criteria. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingCriteria(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <div className="container mx-auto px-4 pt-32 pb-20 max-w-3xl">
+        <div className="mb-12">
+          <div className="flex justify-between items-end mb-4">
+            <div>
+              <h1 className="text-3xl font-bold">Create a Job</h1>
+              <p className="text-muted-foreground">Define your needs and let AI manage the rest.</p>
+            </div>
+            <span className="text-sm font-medium text-muted-foreground">Step {step} of {totalSteps}</span>
+          </div>
+          <Progress value={progress} className="h-2" />
+        </div>
+
+        <Card className="border-border/50">
+          <CardContent className="p-8">
+            <AnimatePresence mode="wait">
+              {step === 1 && (
+                <motion.div
+                  key="step1"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-6"
+                >
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Job Title</Label>
+                    <Input 
+                      id="title" 
+                      placeholder="e.g. Build a Web3 Dashboard" 
+                      value={formData.title}
+                      onChange={(e) => setFormData({...formData, title: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="category">Category</Label>
+                    <Select onValueChange={(v) => setFormData({...formData, category: v})}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Web Development">Web Development</SelectItem>
+                        <SelectItem value="Content Writing">Content Writing</SelectItem>
+                        <SelectItem value="Design">Design</SelectItem>
+                        <SelectItem value="Social Media">Social Media</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="desc">Description</Label>
+                    <Textarea 
+                      id="desc" 
+                      rows={6} 
+                      placeholder="Be specific about your requirements..."
+                      value={formData.description}
+                      onChange={(e) => setFormData({...formData, description: e.target.value})}
+                    />
+                  </div>
+                </motion.div>
+              )}
+
+              {step === 2 && (
+                <motion.div
+                  key="step2"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-6"
+                >
+                  <div className="flex justify-between items-center mb-4">
+                    <Label>Success Criteria</Label>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={generateCriteria}
+                      disabled={loadingCriteria}
+                      className="border-primary/50 text-primary"
+                    >
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      {loadingCriteria ? "Generating..." : "Use AI Template"}
+                    </Button>
+                  </div>
+                  <Textarea 
+                    rows={10} 
+                    placeholder="Enter one criterion per line. This is what the AI will use to verify completion."
+                    value={formData.criteria}
+                    onChange={(e) => setFormData({...formData, criteria: e.target.value})}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Tip: Be as specific as possible (e.g., "Page must load in under 2s" rather than "Fast loading").
+                  </p>
+                </motion.div>
+              )}
+
+              {step === 3 && (
+                <motion.div
+                  key="step3"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-6"
+                >
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Budget (GEN)</Label>
+                      <Input 
+                        type="number" 
+                        placeholder="0.00"
+                        value={formData.budget}
+                        onChange={(e) => setFormData({...formData, budget: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Deadline</Label>
+                      <Input 
+                        type="date"
+                        value={formData.deadline}
+                        onChange={(e) => setFormData({...formData, deadline: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                  <div className="p-4 bg-primary/5 rounded-lg border border-primary/20 flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                      <Wallet className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold">Safe-Escrow Active</p>
+                      <p className="text-xs text-muted-foreground">Your funds will be locked securely until AI verification.</p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {step === 4 && (
+                <motion.div
+                  key="step4"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="space-y-6 text-center"
+                >
+                  <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <CheckCircle2 className="w-10 h-10 text-green-500" />
+                  </div>
+                  <h3 className="text-2xl font-bold">Review & Post</h3>
+                  <div className="bg-muted p-6 rounded-xl text-left space-y-4">
+                    <div>
+                      <p className="text-xs font-bold text-muted-foreground uppercase">Job Title</p>
+                      <p className="font-medium">{formData.title || "Untitled Project"}</p>
+                    </div>
+                    <div className="flex justify-between">
+                      <div>
+                        <p className="text-xs font-bold text-muted-foreground uppercase">Budget</p>
+                        <p className="font-medium text-primary">{formData.budget || "0"} GEN</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-muted-foreground uppercase">Deadline</p>
+                        <p className="font-medium">{formData.deadline || "Not set"}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-muted-foreground uppercase">Criteria</p>
+                      <p className="text-sm text-muted-foreground italic line-clamp-3">
+                        {formData.criteria || "No criteria specified"}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div className="flex justify-between mt-10 pt-6 border-t border-border">
+              <Button 
+                variant="ghost" 
+                onClick={handleBack} 
+                disabled={step === 1}
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back
+              </Button>
+              {step < totalSteps ? (
+                <Button onClick={handleNext}>
+                  Continue
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              ) : (
+                <Button className="bg-primary hover:bg-primary/90 px-8">
+                  Deposit & Post Job
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}

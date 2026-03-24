@@ -1,0 +1,54 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 230 40% 4%;
+    --foreground: 210 40% 98%;
+    --card: 230 40% 6%;
+    --card-foreground: 210 40% 98%;
+    --popover: 230 40% 6%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 230 20% 15%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 230 20% 15%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 260 100% 75%;
+    --accent-foreground: 230 40% 4%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 230 20% 20%;
+    --input: 230 20% 20%;
+    --ring: 217 91% 60%;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+    background-image: 
+      radial-gradient(at 0% 0%, hsla(260, 100%, 75%, 0.05) 0, transparent 50%),
+      radial-gradient(at 100% 100%, hsla(217, 91%, 60%, 0.05) 0, transparent 50%);
+    background-attachment: fixed;
+  }
+}
+
+.gradient-text {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent;
+}
+
+.glass-navbar {
+  @apply bg-background/80 backdrop-blur-md border-b border-border/50;
+}
+
+.hero-gradient {
+  background: radial-gradient(circle at center, hsla(217, 91%, 60%, 0.1) 0%, transparent 70%);
+}
