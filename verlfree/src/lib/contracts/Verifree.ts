@@ -64,6 +64,7 @@ class VeriFree {
                 args: [account_address],
             });
 
+            
             return profile as UserProfile;
 
         } catch (error) {
