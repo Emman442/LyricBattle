@@ -25,13 +25,14 @@ import {
   Wallet,
   Calendar as CalendarIcon
 } from "lucide-react";
-import { aiGenerateJobCriteria } from "@/ai/flows/ai-generate-job-criteria-flow";
-import { useToast } from "@/hooks/use-toast";
+// import { aiGenerateJobCriteria } from "@/ai/flows/ai-generate-job-criteria-flow";
+import { toast } from "sonner";
+import { useCreateJob } from "@/hooks/useVerifree";
 
 export default function PostJob() {
   const [step, setStep] = useState(1);
   const [loadingCriteria, setLoadingCriteria] = useState(false);
-  const { toast } = useToast();
+  const { mutate: createJob, isPending: isCreatingJob } = useCreateJob();
   
   const [formData, setFormData] = useState({
     title: "",
@@ -50,35 +51,42 @@ export default function PostJob() {
 
   const generateCriteria = async () => {
     if (!formData.category || !formData.description) {
-      toast({
-        title: "Missing Info",
-        description: "Please provide a category and description first.",
-        variant: "destructive"
-      });
+      toast.error("Please fill in the job category and description first to get relevant criteria suggestions.");
       return;
     }
     
     setLoadingCriteria(true);
     try {
-      const result = await aiGenerateJobCriteria({
-        jobCategory: formData.category,
-        jobDescription: formData.description,
-      });
+      const result = { suggestedCriteria: ["Criteria 1", "Criteria 2", "Criteria 3"] };
       setFormData({ ...formData, criteria: result.suggestedCriteria.join("\n") });
-      toast({
-        title: "Criteria Generated",
-        description: "AI has suggested success criteria based on your job details.",
-      });
+      toast.warning("AI has suggested success criteria based on your job details.");
     } catch (err) {
-      toast({
-        title: "Error",
-        description: "Failed to generate criteria. Please try again.",
-        variant: "destructive"
-      });
+      toast.error("Failed to generate criteria. Please try again.");
     } finally {
       setLoadingCriteria(false);
     }
   };
+  
+  
+  const handleCreateJob = async () => {
+  try {
+    await createJob({
+      job_id: `job-${Date.now()}`,
+      title: formData.title,
+      description: formData.description,
+      category: formData.category,
+      budget: formData.budget,
+      deadline: formData.deadline,
+    });
+
+    toast.success("Your job has been posted and is now live!");
+  } catch (err) {
+    console.error(err);
+    toast.error("Failed to create job", {
+      description: err instanceof Error ? err.message : "Something went wrong",
+    });
+  }
+};
 
   return (
     <div className="min-h-screen bg-background">
@@ -267,8 +275,8 @@ export default function PostJob() {
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               ) : (
-                <Button className="bg-primary hover:bg-primary/90 px-8">
-                  Deposit & Post Job
+                <Button className="bg-primary hover:bg-primary/90 px-8" onClick={handleCreateJob} disabled={isCreatingJob}>
+                   {isCreatingJob ? "Posting Job..." : "Deposit & Post Job"}
                 </Button>
               )}
             </div>

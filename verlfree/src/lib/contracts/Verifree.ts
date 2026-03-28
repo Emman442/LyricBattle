@@ -60,7 +60,7 @@ class VeriFree {
         try {
             const profile: any = await this.client.readContract({
                 address: this.contractAddress,
-                functionName: "profile_exists",
+                functionName: "fetch_profile",
                 args: [account_address],
             });
 
@@ -94,6 +94,28 @@ class VeriFree {
         } catch (error) {
             console.error("Error creating profile:", error);
             throw new Error("Failed to create profile");
+        }
+    }
+    async createJob(job_id: string, title: string, description: string, category: string, budget: string, deadline: string) {
+        try {
+            const txHash = await this.client.writeContract({
+                address: this.contractAddress,
+                functionName: "create_job",
+                args: [job_id, title, description, category, budget, deadline],
+                value: BigInt(0), // No ETH sent with this transaction
+            });
+
+            const receipt = await this.client.waitForTransactionReceipt({
+                hash: txHash,
+                status: "ACCEPTED" as any,
+                retries: 24,
+                interval: 5000,
+            });
+
+            return receipt as TransactionReceipt;
+        } catch (error) {
+            console.error("Error creating job:", error);
+            throw new Error("Failed to create job");
         }
     }
 

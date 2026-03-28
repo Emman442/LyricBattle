@@ -6,18 +6,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import Modal from "@/components/ui/modal";
+import { useCreateProfile } from "@/hooks/useVerifree";
+import { toast } from "sonner";
 
 interface ProfileSetupModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onProfileCreated: () => void;
   address: string;
 }
 
 export default function ProfileSetupModal({
   isOpen,
   onClose,
-  onSuccess,
+  onProfileCreated,
   address,
 }: ProfileSetupModalProps) {
   const [step, setStep] = useState<1 | 2>(1);
@@ -25,20 +27,34 @@ export default function ProfileSetupModal({
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const createProfileMutation = useCreateProfile();
 
-  const handleCreateProfile = async () => {
-    if (!role || !username || !bio) return;
-    try {
-      setIsCreating(true);
-      // Call your contract create_profile function here
-      // await createProfile(username, bio, role);
-      onSuccess();
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsCreating(false);
-    }
-  };
+const handleCreateProfile = async () => {
+  if (!role || !username || !bio || !address) return;
+
+  try {
+    setIsCreating(true);
+
+    await createProfileMutation.mutateAsync({
+      username,
+      bio,
+      role,
+    });
+
+    toast.success("Profile created!", {
+      description: "Welcome to VeriFree.",
+    });
+
+    onProfileCreated();
+  } catch (err) {
+    console.error(err);
+    toast.error("Failed to create profile", {
+      description: err instanceof Error ? err.message : "Something went wrong",
+    });
+  } finally {
+    setIsCreating(false);
+  }
+};
 
   return (
     <Modal
@@ -128,7 +144,7 @@ export default function ProfileSetupModal({
               <p className="text-xs text-muted-foreground">
                 Registering as{" "}
                 <span className="text-primary font-bold capitalize">{role}</span>{" "}
-                — wallet{" "}
+                with wallet{" "}
                 <span className="font-mono">
                   {address?.slice(0, 6)}...{address?.slice(-4)}
                 </span>

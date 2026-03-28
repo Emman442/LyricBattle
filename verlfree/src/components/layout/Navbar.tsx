@@ -110,7 +110,7 @@ export default function Navbar() {
         isOpen={showSetupModal}
         onClose={() => setShowSetupModal(false)}
         address={address || ""}
-        onSuccess={() => {
+        onProfileCreated={() => {
           setShowSetupModal(false);
           toast.success("Profile created!", {
             description: "Welcome to VeriFree.",
