@@ -7,6 +7,7 @@ import { getContractAddress, getStudioUrl } from "../components/genlayer/client"
 import { useWallet } from "../components/genlayer/wallet";
 // import { success, error, configError } from "../utils/toast";
 import type { UserProfile } from "../lib/types/types";
+import exp from "constants";
 
 
 export function useVeriFreeContract(): VeriFree | null {
@@ -125,6 +126,208 @@ export function useCreateJob() {
 
             await queryClient.invalidateQueries({
                 queryKey: ["jobs"],
+            });
+        },
+    });
+}
+
+export function useApplyToJob() {
+    const contract = useVeriFreeContract();
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            job_id,
+            cover_note,
+        }: {
+            job_id: string;
+            cover_note: string;
+        }) => {
+            if (!contract) {
+                throw new Error("Contract not initialized");
+            }
+            return contract.ApplyForJob(job_id, cover_note);
+        },
+
+        onSuccess: async (_, variables) => {
+            await queryClient.invalidateQueries({
+                queryKey: ["job_applications"],
+            });
+        },
+    });
+}
+
+export function useGetJobApplications(job_id: string) {
+    const contract = useVeriFreeContract();
+
+    return useQuery({
+        queryKey: ["job_applications", job_id],
+        queryFn: async () => {
+            if (!contract) {
+                throw new Error("Contract not initialized");
+            }
+            return contract.getJobApplications(job_id);
+        },
+        enabled: !!contract,
+    });
+}
+
+export function useGetJobs() {
+    const contract = useVeriFreeContract();
+
+    return useQuery({
+        queryKey: ["jobs"],
+        queryFn: async () => {
+            if (!contract) {
+                throw new Error("Contract not initialized");
+            }
+            return contract.getAllJobs();
+        },
+        enabled: !!contract,
+    });
+}
+
+export function getFreelancerJobs(freelancer_address: string) {
+    const contract = useVeriFreeContract();
+
+    return useQuery({
+        queryKey: ["freelancer_jobs", freelancer_address],
+        queryFn: async () => {
+            if (!contract) {
+                throw new Error("Contract not initialized");
+            }
+            return contract.getFreelancerJobs(freelancer_address);
+        },
+        enabled: !!contract && !!freelancer_address,
+    });
+}
+
+export function getClientJobs(client_address: string) {
+    const contract = useVeriFreeContract();
+
+    return useQuery({
+        queryKey: ["client_jobs", client_address],
+        queryFn: async () => {
+            if (!contract) {
+                throw new Error("Contract not initialized");
+            }
+            return contract.getClientJobs(client_address);
+        },
+        enabled: !!contract && !!client_address,
+    });
+}
+
+export function useSubmitDeliverable() {
+    const contract = useVeriFreeContract();
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            job_id,
+            deliverable_url,
+            deliverable_note,
+        }: {
+            job_id: string;
+            deliverable_url: string;
+            deliverable_note: string;
+        }) => {
+            if (!contract) {
+                throw new Error("Contract not initialized");
+            }
+            return contract.submitDeliverable(job_id, deliverable_url, deliverable_note);
+        },
+
+        onSuccess: async (_, variables) => {
+            await queryClient.invalidateQueries({
+                queryKey: ["job_applications"],
+            });
+        },
+    });
+}
+
+export function VerifyMilestone() {
+    const contract = useVeriFreeContract();
+    const queryClient = useQueryClient();
+
+
+    return useMutation({
+        mutationFn: async ({
+            job_id,
+            milestone_id,
+            proof_url,
+
+        }: {
+            job_id: string;
+            milestone_id: string;
+            proof_url: string;
+
+        }) => {
+            if (!contract) {
+                throw new Error("Contract not initialized");
+            }
+            return contract.verifyMilestone(job_id, milestone_id, proof_url);
+        },
+
+        onSuccess: async (_, variables) => {
+            await queryClient.invalidateQueries({
+                queryKey: ["job_applications"],
+            });
+        },
+    });
+}
+
+export function useVerifyAndCompleteJob() {
+    const contract = useVeriFreeContract();
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            job_id,
+
+        }: {
+            job_id: string;
+
+        }) => {
+            if (!contract) {
+                throw new Error("Contract not initialized");
+            }
+            return contract.verifyAndPay(job_id);
+        },
+
+        onSuccess: async (_, variables) => {
+            await queryClient.invalidateQueries({
+                queryKey: ["job_applications"],
+            });
+            await queryClient.invalidateQueries({
+                queryKey: ["jobs"],
+            });
+        },
+    });
+}
+
+export function useRaiseDispute() {
+    const contract = useVeriFreeContract();
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            job_id,
+            context_url,
+            explanation
+        }: {
+            job_id: string;
+            context_url: string;
+            explanation: string;
+        }) => {
+            if (!contract) {
+                throw new Error("Contract not initialized");
+            }
+            return contract.raiseDispute(job_id, context_url, explanation);
+        },
+
+        onSuccess: async (_, variables) => {
+            await queryClient.invalidateQueries({
+                queryKey: ["job_applications"],
             });
         },
     });

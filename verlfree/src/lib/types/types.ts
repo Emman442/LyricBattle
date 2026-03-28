@@ -23,6 +23,28 @@ export interface Job {
     updated_at: string;
 }
 
+export interface JobApplication {
+    job_id: string
+    title: string
+    description: string
+    category: string
+    client: string
+    freelancer: string
+    escrow_amount: string
+    deadline: string
+    is_public: boolean
+    status: string
+    deliverable_url: string
+    deliverable_note: string
+    ai_verdict: string
+    ai_reasoning: string
+    submitted_at: string
+    completed_at: string
+    created_at: string
+    ai_auto_assigned: boolean
+    ai_assignment_reason: string
+}
+
 
 export interface TransactionReceipt {
   status: string;
