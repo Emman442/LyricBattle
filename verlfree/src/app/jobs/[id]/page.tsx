@@ -1,30 +1,152 @@
+
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Navbar from "@/components/layout/Navbar";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   CheckCircle2, 
   Clock, 
-  Wallet, 
-  FileText, 
   MessageSquare, 
-  ExternalLink,
   ShieldCheck,
+  Users,
+  XCircle,
+  Sparkles,
+  Trophy,
+  Rocket,
   AlertCircle
 } from "lucide-react";
-import { aiDeliverableVerification } from "@/ai/flows/ai-deliverable-verification-flow";
-import { aiVerificationExplanation } from "@/ai/flows/ai-verification-explanation-flow";
+import { useParams } from "next/navigation";
+import { 
+  useFirestore, 
+  useDoc, 
+  useCollection, 
+  useUser, 
+  useMemoFirebase,
+  updateDocumentNonBlocking
+} from "@/firebase";
+import { doc, collection } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 
+// Demo Data Fallback
+const MOCK_JOB_DATA: Record<string, any> = {
+  "demo-job-1": {
+    id: "demo-job-1",
+    title: "Build a Next.js 15 SaaS Dashboard",
+    category: "Web Development",
+    description: "Looking for a specialized developer to create a high-performance dashboard with real-time charting. Must use ShadCN UI and Tailwind CSS. The project requires complex state management and responsive design.",
+    budget: 1500,
+    deadline: "2024-06-15",
+    clientId: "demo-client-1",
+    status: "Open",
+    createdAt: new Date().toISOString(),
+    assignedFreelancerId: null
+  }
+};
+
+const MOCK_APPLICATIONS = [
+  { id: "app-1", freelancerId: "0x71C...4f92", coverNote: "I have 5 years of experience with React and have built multiple high-scale dashboards. Check my GitHub for examples.", status: "Pending", isAIRecommended: true },
+  { id: "app-2", freelancerId: "0x3A2...b1e8", coverNote: "Expert in ShadCN and Tailwind. I can deliver this project within 10 days with 100% test coverage.", status: "Pending", isAIRecommended: false },
+  { id: "app-3", freelancerId: "0x9D4...a2c1", coverNote: "I am interested in this project. I have worked on similar dashboards before.", status: "Pending", isAIRecommended: false },
+];
+
 export default function JobDetail() {
-  const [verifying, setVerifying] = useState(false);
-  const [verdict, setVerdict] = useState<any>(null);
+  const { id } = useParams();
+  const db = useFirestore();
+  const { user } = useUser();
   const { toast } = useToast();
+  
+  const [verifying, setVerifying] = useState(false);
+  const [isAIReordering, setIsAIReordering] = useState(false);
+  const [deliverableUrl, setDeliverableUrl] = useState("");
+  const [localJobState, setLocalJobState] = useState<any>(null);
+  const [localApps, setLocalApps] = useState(MOCK_APPLICATIONS);
+
+  // Firestore Fetch
+  const jobRef = useMemoFirebase(() => {
+    if (!db || !id || (id as string).startsWith('demo-')) return null;
+    return doc(db, "jobs", id as string);
+  }, [db, id]);
+  const { data: firestoreJob, isLoading: jobLoading } = useDoc(jobRef);
+
+  // Sync Local State with Firestore or Mock
+  useEffect(() => {
+    if (firestoreJob) {
+      setLocalJobState(firestoreJob);
+    } else if (id && MOCK_JOB_DATA[id as string]) {
+      setLocalJobState(MOCK_JOB_DATA[id as string]);
+    }
+  }, [firestoreJob, id]);
+
+  const isClient = user && (localJobState?.clientId === user.uid || (id as string).startsWith('demo-'));
+  const isAssignedFreelancer = user && localJobState?.assignedFreelancerId === user.uid;
+
+  const handleAIShortlist = () => {
+    setIsAIReordering(true);
+    toast({
+      title: "AI Analyzing Applicants",
+      description: "Comparing cover notes, skills, and on-chain history...",
+    });
+    
+    setTimeout(() => {
+      const reordered = [...localApps].sort((a, b) => (a.isAIRecommended ? -1 : 1));
+      setLocalApps(reordered);
+      setIsAIReordering(false);
+      toast({
+        title: "Shortlist Complete",
+        description: "Found the best fit for your requirements.",
+      });
+    }, 2000);
+  };
+
+  const handleSelectFreelancer = (app: any) => {
+    if ((id as string).startsWith('demo-')) {
+      setLocalJobState({ ...localJobState, status: "Active", assignedFreelancerId: app.freelancerId });
+      setLocalApps(localApps.map(a => ({ ...a, status: a.id === app.id ? "Selected" : "Rejected" })));
+    } else if (db && localJobState) {
+      updateDocumentNonBlocking(doc(db, "jobs", localJobState.id), {
+        status: "Active",
+        assignedFreelancerId: app.freelancerId,
+        updatedAt: new Date().toISOString()
+      });
+    }
+
+    toast({
+      title: "Freelancer Selected",
+      description: `Project is now Active. Payout locked in escrow.`,
+    });
+  };
+
+  const handleRejectApplicant = (appId: string) => {
+    setLocalApps(localApps.map(a => a.id === appId ? { ...a, status: "Rejected" } : a));
+    toast({
+      title: "Application Rejected",
+      description: "Candidate has been notified via the protocol.",
+    });
+  };
+
+  const handleSubmitDeliverable = () => {
+    if (!deliverableUrl) return;
+    setVerifying(true);
+    toast({
+      title: "Submitting Deliverable",
+      description: "Triggering protocol AI verification node...",
+    });
+    
+    setTimeout(() => {
+      setVerifying(false);
+      toast({
+        title: "Deliverable Received",
+        description: "AI Review is in progress. Check back shortly.",
+      });
+    }, 2000);
+  };
 
   const successCriteria = [
     "Fully responsive on mobile and desktop",
@@ -33,190 +155,227 @@ export default function JobDetail() {
     "Clean code structure with modular components"
   ];
 
-  const milestones = [
-    { label: "Job Created", status: "completed" },
-    { label: "Freelancer Accepted", status: "completed" },
-    { label: "Deliverable Submitted", status: "completed" },
-    { label: "AI Verification", status: "current" },
-    { label: "Funds Released", status: "pending" },
-  ];
+  if (jobLoading && !localJobState) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-primary font-bold animate-pulse tracking-widest uppercase text-xs">Synchronizing Node Data...</p>
+        </div>
+      </div>
+    );
+  }
 
-  const handleRunVerification = async () => {
-    setVerifying(true);
-    try {
-      const result = await aiDeliverableVerification({
-        jobDescription: "Build a responsive React landing page with animations.",
-        successCriteria: successCriteria.join(", "),
-        deliverableUrl: "https://verifree-submission-demo.vercel.app"
-      });
-
-      const explanation = await aiVerificationExplanation({
-        jobTitle: "Responsive React Landing Page",
-        deliverableDescription: "Landing page for Web3 startup",
-        successCriteria,
-        aiVerdict: result.isVerified,
-        metCriteria: result.isVerified ? successCriteria : [successCriteria[0]],
-        unmetCriteria: result.isVerified ? [] : [successCriteria[1], successCriteria[2]],
-        aiReasoning: result.reasoning
-      });
-
-      setVerdict({ 
-        isVerified: result.isVerified, 
-        explanation: explanation.explanation 
-      });
-      
-      toast({
-        title: result.isVerified ? "Verification Passed" : "Verification Failed",
-        description: "AI has completed the assessment of the submission.",
-        variant: result.isVerified ? "default" : "destructive"
-      });
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: "AI agent failed to process verification. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setVerifying(false);
-    }
-  };
+  if (!localJobState) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Contract Not Found</h2>
+          <p className="text-muted-foreground mb-6">The specified contract ID does not exist on this chain.</p>
+          <Button asChild variant="outline">
+            <a href="/jobs">Return to Job Board</a>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="container mx-auto px-4 pt-32 pb-20">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Info */}
           <div className="lg:col-span-2 space-y-8">
-            <div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
               <div className="flex items-center gap-3 mb-4">
-                <Badge className="bg-primary/10 text-primary border-none">Web Development</Badge>
-                <Badge variant="outline" className="text-yellow-500 border-yellow-500/50">Pending Review</Badge>
+                <Badge className="bg-primary/10 text-primary border-none">{localJobState.category}</Badge>
+                <Badge variant="outline" className={`
+                  ${localJobState.status === 'Active' ? 'text-blue-500 border-blue-500/50' : 
+                    localJobState.status === 'Completed' ? 'text-green-500 border-green-500/50' : 
+                    'text-yellow-500 border-yellow-500/50'}
+                `}>
+                  {localJobState.status}
+                </Badge>
               </div>
-              <h1 className="text-4xl font-extrabold mb-4 tracking-tight">Responsive React Landing Page</h1>
-              <p className="text-muted-foreground text-lg leading-relaxed">
-                Looking for a clean, modern landing page for a Web3 startup. Must use Tailwind CSS and Framer Motion.
+              <h1 className="text-4xl font-extrabold mb-4 tracking-tight">{localJobState.title}</h1>
+              <p className="text-muted-foreground text-lg leading-relaxed mb-6">
+                {localJobState.description}
               </p>
-            </div>
+            </motion.div>
 
-            {/* Timeline */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Project Progress</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="relative flex justify-between items-center px-2">
-                  <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-border -translate-y-1/2 -z-10" />
-                  {milestones.map((m, i) => (
-                    <div key={m.label} className="flex flex-col items-center gap-2">
-                      <div className={`w-10 h-10 rounded-full border-4 flex items-center justify-center bg-background transition-colors ${
-                        m.status === 'completed' ? 'border-primary bg-primary text-primary-foreground' : 
-                        m.status === 'current' ? 'border-primary animate-pulse' : 'border-border'
-                      }`}>
-                        {m.status === 'completed' ? <CheckCircle2 className="w-5 h-5" /> : (i + 1)}
-                      </div>
-                      <span className="text-[10px] font-bold uppercase tracking-tighter text-center max-w-[60px] leading-tight">
-                        {m.label}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Submission Section */}
-            <Card className="border-primary/20 bg-primary/5">
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle className="text-lg">Latest Submission</CardTitle>
-                  <span className="text-xs text-muted-foreground">Submitted 2 hours ago</span>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex items-center gap-4 p-4 bg-background border border-border rounded-xl">
-                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                    <ExternalLink className="w-6 h-6 text-primary" />
+            {isClient && localJobState.status === "Open" && (
+              <Card className="border-primary/20 bg-primary/5">
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-5 h-5 text-primary" />
+                    <CardTitle className="text-lg">Applications ({localApps.length})</CardTitle>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-bold">https://verifree-submission-demo.vercel.app</p>
-                    <p className="text-xs text-muted-foreground">Main deliverable URL</p>
-                  </div>
-                  <Button variant="outline" size="sm">Open Link</Button>
-                </div>
-
-                {!verdict ? (
                   <Button 
-                    className="w-full bg-primary h-14 text-lg font-bold" 
-                    onClick={handleRunVerification}
-                    disabled={verifying}
+                    variant="outline" 
+                    size="sm" 
+                    className="border-primary/50 text-primary hover:bg-primary/10"
+                    onClick={handleAIShortlist}
+                    disabled={isAIReordering || !localApps.length}
                   >
-                    {verifying ? (
-                      <div className="flex items-center gap-3">
-                        <Clock className="w-5 h-5 animate-spin" />
-                        AI Agent Analyzing Submission...
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-3">
-                        <ShieldCheck className="w-6 h-6" />
-                        Run AI Verification
-                      </div>
-                    )}
+                    <Sparkles className={`w-4 h-4 mr-2 ${isAIReordering ? 'animate-spin' : ''}`} />
+                    {isAIReordering ? "Analyzing..." : "AI Shortlist"}
                   </Button>
-                ) : (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`p-6 rounded-xl border-2 ${verdict.isVerified ? 'border-green-500/50 bg-green-500/5' : 'border-red-500/50 bg-red-500/5'}`}
-                  >
-                    <div className="flex items-center gap-3 mb-4">
-                      {verdict.isVerified ? (
-                        <CheckCircle2 className="w-6 h-6 text-green-500" />
-                      ) : (
-                        <AlertCircle className="w-6 h-6 text-red-500" />
-                      )}
-                      <h3 className={`text-xl font-bold ${verdict.isVerified ? 'text-green-500' : 'text-red-500'}`}>
-                        {verdict.isVerified ? "Verification Successful" : "Verification Failed"}
-                      </h3>
-                    </div>
-                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                      {verdict.explanation}
-                    </p>
-                    {verdict.isVerified && (
-                      <Button className="w-full mt-6 bg-green-500 hover:bg-green-600 text-white font-bold h-12">
-                        Release 450 GEN Funds
-                      </Button>
-                    )}
-                  </motion.div>
-                )}
-              </CardContent>
-            </Card>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <AnimatePresence mode="popLayout">
+                    {localApps.map((app) => (
+                      <motion.div
+                        key={app.id}
+                        layout
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className={`p-4 rounded-xl border bg-background transition-all hover:border-primary/30 ${app.isAIRecommended ? 'border-yellow-500/50 ring-1 ring-yellow-500/20' : 'border-border'} ${app.status === 'Rejected' ? 'opacity-50 grayscale' : ''}`}
+                      >
+                        <div className="flex flex-col md:flex-row gap-6">
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-3">
+                                <Avatar className="w-8 h-8">
+                                  <AvatarImage src={`https://picsum.photos/seed/${app.freelancerId}/100/100`} />
+                                  <AvatarFallback>{app.freelancerId[0]}</AvatarFallback>
+                                </Avatar>
+                                <span className="font-bold text-sm">{app.freelancerId}</span>
+                                {app.isAIRecommended && (
+                                  <Badge className="bg-yellow-500 text-black font-black text-[10px] h-5 px-2">
+                                    AI RECOMMENDED
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1 text-xs text-yellow-500 font-bold">
+                                <Trophy className="w-3 h-3" />
+                                Rep: 95
+                              </div>
+                            </div>
+                            <p className="text-sm text-muted-foreground line-clamp-3 mb-2 italic">
+                              "{app.coverNote}"
+                            </p>
+                            {app.isAIRecommended && (
+                              <p className="text-[10px] text-yellow-600 font-bold flex items-center gap-1">
+                                <Sparkles className="w-3 h-3" />
+                                Strongest cover note with relevant experience mentioned.
+                              </p>
+                            )}
+                          </div>
+                          {app.status === 'Pending' && (
+                            <div className="flex md:flex-col gap-2 justify-end">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="text-destructive hover:bg-destructive/10"
+                                onClick={() => handleRejectApplicant(app.id)}
+                              >
+                                <XCircle className="w-4 h-4 mr-2" />
+                                Reject
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                className="bg-primary"
+                                onClick={() => handleSelectFreelancer(app)}
+                              >
+                                <ShieldCheck className="w-4 h-4 mr-2" />
+                                Select
+                              </Button>
+                            </div>
+                          )}
+                          {app.status !== 'Pending' && (
+                            <Badge className={`h-8 px-4 ${app.status === 'Selected' ? 'bg-green-500' : 'bg-muted'}`}>
+                              {app.status}
+                            </Badge>
+                          )}
+                        </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </CardContent>
+              </Card>
+            )}
 
-            {/* Chat */}
+            {localJobState.status === "Active" && (
+              <Card className="border-primary/20 bg-primary/5">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Rocket className="w-5 h-5 text-primary" />
+                    Deliverable Submission
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {isAssignedFreelancer ? (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="deliverable">Submission Link (GitHub, URL, etc.)</Label>
+                        <Input 
+                          id="deliverable" 
+                          placeholder="https://..." 
+                          value={deliverableUrl}
+                          onChange={(e) => setDeliverableUrl(e.target.value)}
+                        />
+                        <p className="text-xs text-muted-foreground">AI will automatically crawl this link to verify against success criteria.</p>
+                      </div>
+                      <Button 
+                        onClick={handleSubmitDeliverable} 
+                        disabled={!deliverableUrl || verifying}
+                        className="w-full bg-primary py-6 text-lg font-bold"
+                      >
+                        {verifying ? "Triggering AI Node..." : "Submit for Verification"}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="p-12 text-center text-muted-foreground border-2 border-dashed border-border rounded-xl">
+                      <ShieldCheck className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                      <p className="font-medium">
+                        {isClient 
+                          ? "Contract is Active. Awaiting deliverable from the assigned freelancer." 
+                          : "You are not assigned to this job."}
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardHeader className="border-b border-border">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <MessageSquare className="w-5 h-5 text-primary" />
-                  Project Chat
+                  Project Log
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-0">
-                <div className="h-[300px] overflow-y-auto p-6 space-y-4 flex flex-col">
-                  <div className="bg-muted p-4 rounded-2xl rounded-tl-none max-w-[80%] self-start">
-                    <p className="text-sm">Hi! I've just submitted the deliverable. The AI should be able to verify it based on our criteria.</p>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex gap-4 items-start">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <Clock className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold">Contract Initialized</p>
+                      <p className="text-xs text-muted-foreground">{new Date(localJobState.createdAt).toLocaleString()}</p>
+                    </div>
                   </div>
-                  <div className="bg-primary/10 border border-primary/20 p-4 rounded-2xl rounded-tr-none max-w-[80%] self-end">
-                    <p className="text-sm">Great, I'll run the AI agent now to check the responsiveness and code quality.</p>
-                  </div>
-                </div>
-                <div className="p-4 border-t border-border flex gap-2">
-                  <Input placeholder="Type a message..." className="bg-card" />
-                  <Button>Send</Button>
+                  {localJobState.status === 'Active' && (
+                    <div className="flex gap-4 items-start">
+                      <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center shrink-0">
+                        <CheckCircle2 className="w-4 h-4 text-green-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold">Freelancer Assigned</p>
+                        <p className="text-xs text-muted-foreground">Escrow funds locked by protocol.</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Sidebar */}
           <div className="space-y-6">
             <Card>
               <CardHeader>
@@ -225,15 +384,15 @@ export default function JobDetail() {
               <CardContent className="space-y-4">
                 <div className="flex justify-between items-center py-2 border-b border-border">
                   <span className="text-muted-foreground text-sm">Escrow Amount</span>
-                  <span className="font-bold text-lg">450 GEN</span>
+                  <span className="font-bold text-lg">{localJobState.budget} GEN</span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-border">
                   <span className="text-muted-foreground text-sm">Deadline</span>
-                  <span className="font-bold text-sm">Oct 24, 2025</span>
+                  <span className="font-bold text-sm">{localJobState.deadline}</span>
                 </div>
-                <div className="flex justify-between items-center py-2 border-b border-border">
-                  <span className="text-muted-foreground text-sm">Fee (5%)</span>
-                  <span className="font-bold text-sm">22.5 GEN</span>
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-muted-foreground text-sm">Protocol Fee</span>
+                  <span className="font-bold text-sm text-primary">5%</span>
                 </div>
               </CardContent>
             </Card>

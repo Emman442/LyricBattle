@@ -25,6 +25,7 @@ import {
   Wallet,
   Calendar as CalendarIcon
 } from "lucide-react";
+import { aiGenerateJobCriteria } from "@/ai/flows/ai-generate-job-criteria-flow";
 import { useToast } from "@/hooks/use-toast";
 
 export default function PostJob() {

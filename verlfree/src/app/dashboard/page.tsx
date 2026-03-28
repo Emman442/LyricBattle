@@ -1,3 +1,4 @@
+
 "use client";
 
 import Navbar from "@/components/layout/Navbar";
@@ -6,45 +7,67 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Wallet, Briefcase, CheckCircle2, Clock, Plus, User } from "lucide-react";
+import { 
+  Wallet, 
+  Briefcase, 
+  CheckCircle2, 
+  Clock, 
+  Plus, 
+  Users, 
+  Trophy, 
+  Rocket,
+  TrendingUp,
+  ArrowRight
+} from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 
-const mockJobs = [
-  {
-    id: "1",
-    title: "NFT Marketplace Smart Contract",
-    freelancer: "cryptodev.eth",
-    amount: "1200 GEN",
-    deadline: "2 days left",
-    status: "Pending Review",
-    type: "active",
-  },
-  {
-    id: "2",
-    title: "Brand Identity Design",
-    freelancer: "design_pro",
-    amount: "800 GEN",
-    deadline: "5 days left",
-    status: "Active",
-    type: "active",
-  },
-  {
-    id: "3",
-    title: "Blog Content Strategy",
-    freelancer: "writer_hub",
-    amount: "450 GEN",
-    deadline: "Completed",
-    status: "Completed",
-    type: "completed",
-  },
+// Mock Data for Demo Stability
+const MOCK_APPLICATIONS = [
+  { id: "app-1", jobId: "demo-job-1", status: "Shortlisted", coverNote: "Expert in Next.js and Tailwind. I built the VeriFree prototype.", appliedAt: "2024-03-20T10:00:00Z" },
+  { id: "app-2", jobId: "demo-job-2", status: "Pending", coverNote: "I've written for several major Web3 protocols.", appliedAt: "2024-03-21T14:30:00Z" },
+];
+
+const MOCK_JOBS = [
+  { id: "demo-job-1", title: "Build a Next.js 15 SaaS Dashboard", status: "Open", budget: 1500, deadline: "2024-06-15", applicantIds: ["u1", "u2", "u3"] },
+  { id: "demo-job-4", title: "Mobile UI Design", status: "Active", budget: 2000, deadline: "2024-07-01", applicantIds: ["u5"] },
 ];
 
 export default function Dashboard() {
-  const stats = [
-    { label: "Total Escrowed", value: "2,450", suffix: " GEN", icon: Wallet },
-    { label: "Active Jobs", value: "4", suffix: "", icon: Briefcase },
-    { label: "Completed", value: "28", suffix: "", icon: CheckCircle2 },
-    { label: "Avg. Review", value: "1.2", suffix: " Days", icon: Clock },
+
+const [profile, setProfile] = useState<any>(null);
+const [profileLoading, setProfileLoading] = useState(false);
+
+  if (profileLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-muted-foreground font-medium animate-pulse">Syncing on-chain profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Onboarding: No profile found
+  if (!profile) {
+    // return <RoleSelection user={user} db={db} />;
+    return (<> Nothing Found!</>)
+  }
+
+  const isClient = profile.role === "Client";
+
+  // Stats based on role
+  const stats = isClient ? [
+    { label: "Total Escrowed", value: profile.totalValueEscrowed || "4.5k", suffix: " GEN", icon: Wallet },
+    { label: "Active Jobs", value: 2, suffix: "", icon: Briefcase },
+    { label: "Pending Applicants", value: 8, suffix: "", icon: Users },
+    { label: "Success Rate", value: "100", suffix: "%", icon: CheckCircle2 },
+  ] : [
+    { label: "Total Earned", value: profile.totalEarned || "12.8k", suffix: " GEN", icon: TrendingUp },
+    { label: "Active Projects", value: 1, suffix: "", icon: Rocket },
+    { label: "My Applications", value: MOCK_APPLICATIONS.length, suffix: "", icon: Clock },
+    { label: "Reputation", value: profile.reputationScore || "98", suffix: "", icon: Trophy },
   ];
 
   return (
@@ -53,18 +76,30 @@ export default function Dashboard() {
       <div className="container mx-auto px-4 pt-32 pb-20">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Welcome back, client.eth</h1>
-            <p className="text-muted-foreground">Manage your active escrows and review submissions.</p>
+            <div className="flex items-center gap-2 mb-1">
+              <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">
+                {isClient ? "Client Mode" : "Freelancer Mode"}
+              </Badge>
+              <h1 className="text-3xl font-bold tracking-tight">
+                Welcome back, {profile.username}
+              </h1>
+            </div>
+            <p className="text-muted-foreground">
+              {isClient 
+                ? "Manage your listings and verify project milestones." 
+                : "Track your applications and active project status."}
+            </p>
           </div>
-          <Button asChild size="lg" className="bg-primary hover:bg-primary/90">
-            <Link href="/post-job">
-              <Plus className="w-5 h-5 mr-2" />
-              Post New Job
-            </Link>
-          </Button>
+          {isClient && (
+            <Button asChild size="lg" className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20">
+              <Link href="/post-job">
+                <Plus className="w-5 h-5 mr-2" />
+                Post New Job
+              </Link>
+            </Button>
+          )}
         </div>
 
-        {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
           {stats.map((stat, i) => (
             <motion.div
@@ -73,15 +108,12 @@ export default function Dashboard() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
             >
-              <Card>
+              <Card className="border-border/50 hover:border-primary/30 transition-colors">
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between mb-4">
                     <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
                       <stat.icon className="w-5 h-5 text-primary" />
                     </div>
-                    <Badge variant="secondary" className="bg-green-500/10 text-green-500 border-none">
-                      +12%
-                    </Badge>
                   </div>
                   <div className="text-2xl font-bold">
                     {stat.value}
@@ -94,81 +126,254 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* Jobs List */}
-        <Tabs defaultValue="active" className="w-full">
-          <TabsList className="mb-8">
-            <TabsTrigger value="active" className="px-8">Active Jobs</TabsTrigger>
-            <TabsTrigger value="completed" className="px-8">Completed Jobs</TabsTrigger>
+        <Tabs defaultValue={isClient ? "open" : "applied"} className="w-full">
+          <TabsList className="mb-8 bg-muted/50 p-1 flex-wrap h-auto">
+            {isClient ? (
+              <>
+                <TabsTrigger value="open" className="px-6">My Listings</TabsTrigger>
+                <TabsTrigger value="active" className="px-6">Active Projects</TabsTrigger>
+                <TabsTrigger value="completed" className="px-6">Completed</TabsTrigger>
+              </>
+            ) : (
+              <>
+                <TabsTrigger value="applied" className="px-6">Applied Jobs</TabsTrigger>
+                <TabsTrigger value="active" className="px-6">Active Projects</TabsTrigger>
+                <TabsTrigger value="completed" className="px-6">Completed</TabsTrigger>
+              </>
+            )}
           </TabsList>
           
-          <TabsContent value="active">
-            <div className="grid grid-cols-1 gap-4">
-              {mockJobs.filter(j => j.type === 'active').map((job, i) => (
-                <JobRow key={job.id} job={job} index={i} />
-              ))}
-            </div>
-          </TabsContent>
-          <TabsContent value="completed">
-            <div className="grid grid-cols-1 gap-4">
-              {mockJobs.filter(j => j.type === 'completed').map((job, i) => (
-                <JobRow key={job.id} job={job} index={i} />
-              ))}
-            </div>
-          </TabsContent>
+          <div className="mt-4">
+            {isClient ? (
+              <>
+                <TabsContent value="open" className="space-y-4">
+                  {MOCK_JOBS.filter(j => j.status === 'Open').map((job, i) => (
+                    <JobRow key={job.id} job={job} index={i} />
+                  ))}
+                </TabsContent>
+                <TabsContent value="active" className="space-y-4">
+                  {MOCK_JOBS.filter(j => j.status === 'Active').map((job, i) => (
+                    <JobRow key={job.id} job={job} index={i} />
+                  ))}
+                </TabsContent>
+                <TabsContent value="completed" className="space-y-4">
+                  <EmptyState message="No completed projects yet." />
+                </TabsContent>
+              </>
+            ) : (
+              <>
+                <TabsContent value="applied" className="space-y-4">
+                  {MOCK_APPLICATIONS.map((app, i) => (
+                    <ApplicationRow key={app.id} application={app} index={i} />
+                  ))}
+                </TabsContent>
+                <TabsContent value="active" className="space-y-4">
+                  {MOCK_JOBS.filter(j => j.status === 'Active').map((job, i) => (
+                    <JobRow key={job.id} job={job} index={i} />
+                  ))}
+                </TabsContent>
+                <TabsContent value="completed" className="space-y-4">
+                  <EmptyState message="No completed projects yet." />
+                </TabsContent>
+              </>
+            )}
+          </div>
         </Tabs>
       </div>
     </div>
   );
 }
 
-function JobRow({ job, index }: { job: any; index: number }) {
-  const statusColors: Record<string, string> = {
-    "Active": "blue",
-    "Pending Review": "yellow",
-    "Completed": "green",
-    "Disputed": "red",
+function RoleSelection({ user, db }: { user: any; db: any }) {
+  const [loading, setLoading] = useState(false);
+
+  const handleSelectRole = (role: "Client" | "Freelancer") => {
+    if (!db || !user) return;
+    setLoading(true);
+
+    const profileData = {
+      id: user.uid,
+      walletAddress: user.uid,
+      username: user.uid.substring(0, 6),
+      bio: `I am a ${role} on VeriFree.`,
+      role: role,
+      reputationScore: role === "Freelancer" ? 50 : 0,
+      totalJobsCompleted: 0,
+      totalValueEscrowed: 0,
+      totalEarned: 0,
+      successRate: 0,
+      portfolioJobIds: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
   };
 
-  const borderColor = statusColors[job.status] || "blue";
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-2 gap-8"
+      >
+        <div className="md:col-span-2 text-center mb-4">
+          <h2 className="text-4xl font-extrabold mb-4">Choose your <span className="gradient-text">destiny.</span></h2>
+          <p className="text-muted-foreground">Pick how you want to interact with the VeriFree protocol.</p>
+        </div>
+
+        <RoleCard 
+          title="I want to Hire"
+          desc="Post jobs, set success criteria, and use AI to verify deliverables automatically."
+          icon={Users}
+          color="primary"
+          onClick={() => handleSelectRole("Client")}
+          loading={loading}
+        />
+
+        <RoleCard 
+          title="I want to Work"
+          desc="Apply for jobs, build your on-chain reputation, and get paid instantly upon verification."
+          icon={Briefcase}
+          color="accent"
+          onClick={() => handleSelectRole("Freelancer")}
+          loading={loading}
+        />
+      </motion.div>
+    </div>
+  );
+}
+
+function RoleCard({ title, desc, icon: Icon, color, onClick, loading }: any) {
+  return (
+    <Card className={`group hover:border-${color} transition-all cursor-pointer overflow-hidden relative`} onClick={onClick}>
+      <CardContent className="pt-12 pb-10 px-8 text-center">
+        <div className={`w-20 h-20 bg-${color}/10 rounded-3xl flex items-center justify-center mx-auto mb-8 group-hover:scale-110 transition-transform`}>
+          <Icon className={`w-10 h-10 text-${color}`} />
+        </div>
+        <h3 className="text-2xl font-bold mb-4">{title}</h3>
+        <p className="text-muted-foreground mb-8">{desc}</p>
+        <Button variant="outline" className={`group-hover:bg-${color} group-hover:text-white transition-colors`}>
+          Select Role
+          <ArrowRight className="w-4 h-4 ml-2" />
+        </Button>
+      </CardContent>
+      {loading && (
+        <div className="absolute inset-0 bg-background/50 flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function EmptyState({ message, actionLink, actionText }: { message: string; actionLink?: string; actionText?: string }) {
+  return (
+    <div className="text-center py-20 text-muted-foreground border-2 border-dashed border-border rounded-2xl">
+      <Briefcase className="w-12 h-12 mx-auto mb-4 opacity-10" />
+      <p className="font-medium mb-6">{message}</p>
+      {actionLink && (
+        <Button asChild variant="outline" className="border-primary/50 text-primary hover:bg-primary/5">
+          <Link href={actionLink}>{actionText}</Link>
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function ApplicationRow({ application, index }: { application: any; index: number }) {
+  const statusColors: Record<string, string> = {
+    "Pending": "bg-yellow-500",
+    "Shortlisted": "bg-accent",
+    "Selected": "bg-green-500",
+    "Rejected": "bg-destructive",
+  };
+
+  const jobTitleMap: Record<string, string> = {
+    "demo-job-1": "Next.js SaaS Dashboard",
+    "demo-job-2": "Technical Content Writer",
+  };
 
   return (
     <motion.div
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: index * 0.1 }}
+      transition={{ delay: index * 0.05 }}
+    >
+      <Link href={`/jobs/${application.jobId}`}>
+        <Card className="hover:bg-accent/5 transition-all border-border/50 group">
+          <CardContent className="flex items-center justify-between p-6">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-1">
+                <h3 className="text-lg font-bold group-hover:text-primary transition-colors">
+                  {jobTitleMap[application.jobId] || "Syncing Contract..."}
+                </h3>
+                <Badge className={`${statusColors[application.status]} text-white border-none text-[10px]`}>
+                  {application.status}
+                </Badge>
+              </div>
+              <p className="text-sm text-muted-foreground line-clamp-1 italic">"{application.coverNote}"</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="text-right hidden sm:block">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Applied On</p>
+                <p className="text-sm font-medium">{new Date(application.appliedAt).toLocaleDateString()}</p>
+              </div>
+              <Button size="sm" variant="ghost" className="group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                View Job
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </Link>
+    </motion.div>
+  );
+}
+
+function JobRow({ job, index }: { job: any; index: number }) {
+  const statusColors: Record<string, string> = {
+    "Open": "text-blue-500 bg-blue-500/10",
+    "Active": "text-green-500 bg-green-500/10",
+    "Completed": "text-primary bg-primary/10",
+  };
+
+  const applicantCount = job.applicantIds?.length || 0;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: index * 0.05 }}
     >
       <Link href={`/jobs/${job.id}`}>
-        <Card className={`hover:bg-accent/50 transition-colors border-l-4 border-l-${borderColor}-500 overflow-hidden`}>
+        <Card className="hover:bg-accent/5 transition-all border-border/50 group overflow-hidden">
           <CardContent className="flex flex-col md:flex-row items-center justify-between p-6 gap-6">
             <div className="flex-1">
-              <h3 className="text-lg font-bold mb-1">{job.title}</h3>
+              <div className="flex items-center gap-2 mb-2">
+                <h3 className="text-lg font-bold group-hover:text-primary transition-colors">{job.title}</h3>
+                <Badge variant="outline" className={`text-[10px] border-none ${statusColors[job.status]}`}>
+                  {job.status}
+                </Badge>
+              </div>
               <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <User className="w-4 h-4" />
-                  {job.freelancer}
+                <span className="flex items-center gap-1.5">
+                  <Clock className="w-4 h-4 text-primary" />
+                  Due {job.deadline}
                 </span>
-                <span className="flex items-center gap-1">
-                  <Clock className="w-4 h-4" />
-                  {job.deadline}
-                </span>
+                {job.status === "Open" && (
+                  <span className="flex items-center gap-1.5 font-bold text-primary">
+                    <Users className="w-4 h-4" />
+                    {applicantCount} applicants
+                  </span>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-8 w-full md:w-auto justify-between">
               <div className="text-right">
-                <p className="font-bold text-lg">{job.amount}</p>
-                <p className="text-xs text-muted-foreground uppercase tracking-widest">Budget</p>
+                <p className="font-black text-xl text-foreground">{job.budget} GEN</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">In Escrow</p>
               </div>
-              <Badge 
-                className={
-                  job.status === "Pending Review" 
-                    ? "bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20" 
-                    : job.status === "Completed"
-                    ? "bg-green-500/10 text-green-500 hover:bg-green-500/20"
-                    : "bg-primary/10 text-primary hover:bg-primary/20"
-                }
-              >
-                {job.status}
-              </Badge>
+              <Button size="sm" className="bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all min-w-[140px]">
+                {job.status === "Open" ? "Manage Candidates" : "View Progress"}
+              </Button>
             </div>
           </CardContent>
         </Card>

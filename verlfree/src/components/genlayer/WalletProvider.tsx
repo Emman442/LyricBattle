@@ -11,7 +11,7 @@ import {
   getEthereumProvider,
   GENLAYER_CHAIN_ID,
 } from "./client";
-import { error, userRejected, warning } from "@/lib/utils/toast";
+import { error, userRejected, warning } from "@/components/utils/toast";
 
 // localStorage key for tracking user's disconnect intent
 const DISCONNECT_FLAG = "wallet_disconnected";
