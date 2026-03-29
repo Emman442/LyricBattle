@@ -7,7 +7,7 @@ import { getContractAddress, getStudioUrl } from "../components/genlayer/client"
 import { useWallet } from "../components/genlayer/wallet";
 // import { success, error, configError } from "../utils/toast";
 import type { UserProfile } from "../lib/types/types";
-import exp from "constants";
+import {toast} from "sonner";
 
 
 export function useVeriFreeContract(): VeriFree | null {
@@ -101,7 +101,8 @@ export function useCreateJob() {
             description,
             category,
             budget,
-            deadline
+            deadline,
+            milestone_titles,
         }: {
             job_id: string;
             title: string;
@@ -109,12 +110,13 @@ export function useCreateJob() {
             category: string;
             budget: string;
             deadline: string;
+            milestone_titles: string[];
         }) => {
             if (!contract) {
                 throw new Error("Contract not initialized");
             }
 
-            const receipt = await contract.createJob(job_id, title, description, category, budget, deadline);
+            const receipt = await contract.createJob(job_id, title, description, category, budget, deadline, milestone_titles);
             console.log("Job creation transaction receipt:", receipt);
             return receipt;
         },
@@ -127,7 +129,12 @@ export function useCreateJob() {
             await queryClient.invalidateQueries({
                 queryKey: ["jobs"],
             });
+            toast.success("Your job has been posted and is now live!");
         },
+        onError: async (error) => {
+            console.error("Error creating job:", error);
+            toast.error("Failed to create job. Please try again.");
+        }
     });
 }
 

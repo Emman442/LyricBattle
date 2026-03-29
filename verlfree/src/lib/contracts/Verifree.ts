@@ -1,6 +1,7 @@
 import { createClient } from "genlayer-js";
 import { studionet } from "genlayer-js/chains";
 import { Job, JobApplication, TransactionReceipt, UserProfile } from "../types/types";
+import {parseEther} from "viem";
 
 class VeriFree {
     private contractAddress: `0x${string}`;
@@ -157,13 +158,13 @@ class VeriFree {
             throw new Error("Failed to create profile");
         }
     }
-    async createJob(job_id: string, title: string, description: string, category: string, budget: string, deadline: string) {
+    async createJob(job_id: string, title: string, description: string, category: string, budget: string, deadline: string, milestone_titles: string[]) {
         try {
             const txHash = await this.client.writeContract({
                 address: this.contractAddress,
                 functionName: "create_job",
-                args: [job_id, title, description, category, budget, deadline],
-                value: BigInt(0), // No ETH sent with this transaction
+                args: [job_id, title, description, category, budget, deadline, milestone_titles],
+                value: parseEther(budget),
             });
 
             const receipt = await this.client.waitForTransactionReceipt({

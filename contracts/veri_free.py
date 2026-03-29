@@ -63,6 +63,7 @@ class Milestone:
     job_id: str
     title: str
     status: str
+    deliverable_url: str
     ai_verdict: str
     ai_reasoning: str
 
@@ -95,7 +96,7 @@ class VeriFree(gl.Contract):
     # Milestones
     milestones: TreeMap[str, Milestone]          # milestone_id -> Milestone
     milestone_ids: DynArray[str]                 # all milestone ids
-    job_milestones: TreeMap[str, list[str]]      # job_id -> list of milestone ids
+    job_milestones: TreeMap[str, DynArray[str]]  # job_id -> milestone ids
 
     # Disputes
     disputes: TreeMap[str, Dispute]                        # key = job_id
@@ -150,7 +151,6 @@ class VeriFree(gl.Contract):
         title: str,
         description: str,
         category: str,
-        criteria: str,
         freelancer_address: str,
         deadline: str,
         is_public: bool,
@@ -161,7 +161,6 @@ class VeriFree(gl.Contract):
         client_address = gl.message.sender_address
         assert client_address in self.user_profiles, "Client profile not found"
         assert self.user_profiles[client_address].role == "client", "Only clients can post jobs"
-
         assert gl.message.value > 0, "Must deposit GEN to escrow"
 
         self.jobs[job_id] = Job(
@@ -169,7 +168,6 @@ class VeriFree(gl.Contract):
             title=title,
             description=description,
             category=category,
-            criteria=criteria,
             client=client_address.as_hex,
             freelancer=freelancer_address,
             escrow_amount=str(gl.message.value),
@@ -182,12 +180,16 @@ class VeriFree(gl.Contract):
             ai_reasoning="",
             submitted_at="0",
             completed_at="0",
-            created_at="0",
+            created_at=str(gl.message.timestamp),
             ai_auto_assigned=False,
             ai_assignment_reason="",
         )
 
         self.job_ids.append(job_id)
+
+        # initialize job milestone mapping if needed
+        if job_id not in self.job_milestones:
+            self.job_milestones[job_id] = DynArray[str]()
 
         for i in range(len(milestone_titles)):
             milestone_id = job_id + "_ms_" + str(i)
@@ -197,6 +199,7 @@ class VeriFree(gl.Contract):
                 job_id=job_id,
                 title=milestone_titles[i],
                 status="pending",
+                deliverable_url="",
                 ai_verdict="",
                 ai_reasoning="",
             )
@@ -205,53 +208,7 @@ class VeriFree(gl.Contract):
             self.job_milestones[job_id].append(milestone_id)
 
         current_spent = int(self.user_profiles[client_address].total_spent)
-        self.user_profiles[client_address].total_spent = str(current_spent + gl.message.value)
-
-    # def create_job(
-    #     self,
-    #     job_id: str,
-    #     title: str,
-    #     description: str,
-    #     category: str,
-    #     criteria: str,
-    #     deadline: str,
-    # ) -> None:
-    #     # assert gl.message.value > 0, "Must deposit GEN to escrow"
-    #     assert job_id not in self.jobs, "Job ID already exists"
-
-    #     client_address = gl.message.sender_address
-    #     assert client_address in self.user_profiles, "Client profile not found"
-    #     assert self.user_profiles[client_address].role == "client", "Only clients can post jobs"
-
-    #     self.jobs[job_id] = Job(
-    #         job_id=job_id,
-    #         title=title,
-    #         description=description,
-    #         category=category,
-    #         criteria=criteria,
-    #         client=client_address.as_hex,
-    #         freelancer="",
-    #         escrow_amount=str(gl.message.value),
-    #         deadline=deadline,
-    #         is_public=True,
-    #         status="active",
-    #         deliverable_url="",
-    #         deliverable_note="",
-    #         ai_verdict="",
-    #         ai_reasoning="",
-    #         submitted_at="0",
-    #         completed_at="0",
-    #         created_at="0",
-    #         ai_auto_assigned=False,
-    #         ai_assignment_reason="",
-    #     )
-
-    #     self.job_ids.append(job_id)
-    #     current_spent = int(self.user_profiles[client_address].total_spent)
-    #     current_value = int(gl.message.value)
-    #     self.user_profiles[client_address].total_spent = str(current_spent + current_value)
-
-
+        self.user_profiles[client_address].total_spent = str(current_spent + int(gl.message.value))
 
     @gl.public.view
     def get_all_public_job_ids(self) -> list[str]:
@@ -377,9 +334,25 @@ class VeriFree(gl.Contract):
     @gl.public.write
     def ai_shortlist_applicants(self, job_id: str) -> str:
         assert job_id in self.jobs, "Job not found"
+
         job = self.jobs[job_id]
         assert job.client == gl.message.sender_address.as_hex, "Not the client"
 
+        # Build milestone / requirement summary
+        milestone_summary = ""
+        milestone_count = 0
+
+        if job_id in self.job_milestones:
+            for milestone_id in self.job_milestones[job_id]:
+                milestone = self.milestones[milestone_id]
+                milestone_summary += (
+                    "Requirement: " + milestone.title + "\n"
+                )
+                milestone_count += 1
+
+        assert milestone_count > 0, "No milestones found for this job"
+
+        # Build applicant summaries
         applicant_summaries = ""
         found_any = False
 
@@ -408,17 +381,35 @@ class VeriFree(gl.Contract):
         assert found_any, "No applications yet"
 
         prompt = f"""
-    You are evaluating freelancer applications for this job:
+    You are evaluating freelancer applications for a freelance job.
 
-    Job Title: {job.title}
-    Job Description: {job.description}
-    Category: {job.category}
-    Success Criteria: {job.criteria}
+    JOB TITLE:
+    {job.title}
 
-    Applicants:
+    JOB DESCRIPTION:
+    {job.description}
+
+    JOB CATEGORY:
+    {job.category}
+
+    JOB REQUIREMENTS / MILESTONES:
+    {milestone_summary}
+
+    APPLICANTS:
     {applicant_summaries}
 
-    Rank applicants from most to least suitable. For each:
+    Your task:
+    Rank applicants from most to least suitable.
+
+    Base your ranking on:
+    1. How well their cover note matches the job description
+    2. How well they appear able to satisfy the milestone requirements
+    3. Reputation score
+    4. Jobs completed
+    5. Success rate
+
+    Return ONLY in this exact format:
+
     RANK: [number]
     ADDRESS: [wallet address]
     SCORE: [0-100]
@@ -431,7 +422,7 @@ class VeriFree(gl.Contract):
 
         result = gl.eq_principle.prompt_comparative(
             nondet,
-            principle="Top-ranked applicants should be ordered by strongest fit based on cover note relevance, reputation, completed jobs, and success rate."
+            principle="Applicants should be ranked by strongest overall fit based on milestone relevance, job description fit, cover note quality, reputation score, completed jobs, and success rate."
         )
 
         lines = result.split("\n")
@@ -439,17 +430,22 @@ class VeriFree(gl.Contract):
 
         for line in lines:
             line = line.strip()
+
             if line.startswith("ADDRESS:"):
                 current_address = line.replace("ADDRESS:", "").strip()
+
             elif line.startswith("SCORE:") and current_address != "":
                 score = line.replace("SCORE:", "").strip()
                 app_key = self._application_key(job_id, current_address)
+
                 if app_key in self.applications:
                     self.applications[app_key].ai_score = score
                     self.applications[app_key].status = "shortlisted"
+
             elif line.startswith("REASON:") and current_address != "":
                 reason = line.replace("REASON:", "").strip()
                 app_key = self._application_key(job_id, current_address)
+
                 if app_key in self.applications:
                     self.applications[app_key].ai_recommendation = reason
 
@@ -463,12 +459,10 @@ class VeriFree(gl.Contract):
         job_id: str,
         milestone_id: str,
         title: str,
-        criteria: str,
-        amount: str,
-        deadline: str,
     ) -> None:
         assert job_id in self.jobs, "Job not found"
         job = self.jobs[job_id]
+
         assert job.client == gl.message.sender_address.as_hex, "Not the client"
         assert job.status in ["active", "in_progress"], "Job must be active or in progress"
         assert milestone_id not in self.milestones, "Milestone already exists"
@@ -483,7 +477,12 @@ class VeriFree(gl.Contract):
             ai_reasoning="",
         )
 
-        self.job_milestone_ids[job_id].append(milestone_id)
+        self.milestone_ids.append(milestone_id)
+
+        if job_id not in self.job_milestones:
+            self.job_milestones[job_id] = DynArray[str]()
+
+        self.job_milestones[job_id].append(milestone_id)
 
 
     @gl.public.view
@@ -527,23 +526,21 @@ class VeriFree(gl.Contract):
         assert job.status == "pending_review", "Job is not pending review"
         assert job.deliverable_url != "", "No deliverable submitted"
         assert job.freelancer != "", "No freelancer assigned"
-
-        # Only client should approve final payment
         assert job.client == gl.message.sender_address.as_hex, "Only client can verify and pay"
 
-        # Collect all milestones for this job
+        assert job_id in self.job_milestones, "No milestones found for this job"
+
         milestone_summary = ""
         milestone_count = 0
 
-        if job_id in self.job_milestones:
-            for milestone_id in self.job_milestones[job_id]:
-                milestone = self.milestones[milestone_id]
-                milestone_summary += (
-                    "Milestone ID: " + milestone.milestone_id + "\n" +
-                    "Milestone Title: " + milestone.title + "\n" +
-                    "---\n"
-                )
-                milestone_count += 1
+        for milestone_id in self.job_milestones[job_id]:
+            milestone = self.milestones[milestone_id]
+            milestone_summary += (
+                "Milestone ID: " + milestone.milestone_id + "\n" +
+                "Checklist Item: " + milestone.title + "\n" +
+                "---\n"
+            )
+            milestone_count += 1
 
         assert milestone_count > 0, "No milestones found for this job"
 
@@ -555,13 +552,16 @@ class VeriFree(gl.Contract):
             prompt = f"""
     You are a strict but fair freelance job evaluator.
 
-    Job Title: {job.title}
-    Job Category: {job.category}
+    JOB TITLE:
+    {job.title}
+
+    JOB CATEGORY:
+    {job.category}
 
     JOB DESCRIPTION:
     {job.description}
 
-    JOB REQUIREMENTS / MILESTONES:
+    ACCEPTANCE CHECKLIST:
     {milestone_summary}
 
     FREELANCER NOTE:
@@ -571,9 +571,9 @@ class VeriFree(gl.Contract):
     {deliverable_content[:4000]}
 
     Your task:
-    1. Check whether the final deliverable satisfies ALL milestone requirements.
-    2. If even one important milestone is not satisfied, the verdict should be NO.
-    3. Only return YES if the work is truly acceptable for payment.
+    1. Check whether the deliverable satisfies EVERY checklist item.
+    2. If even ONE important checklist item is not met, VERDICT must be NO.
+    3. Only return YES if the freelancer fully deserves payment.
 
     Return ONLY in this exact format:
 
@@ -581,21 +581,37 @@ class VeriFree(gl.Contract):
     SCORE: [0-100]
     REASONING: [2-4 sentences]
     MILESTONE_CHECK:
-    - [milestone id] | [milestone title] | YES or NO
-    - [milestone id] | [milestone title] | YES or NO
+    - [milestone_id] | [checklist item] | YES or NO
+    - [milestone_id] | [checklist item] | YES or NO
     """
             return gl.nondet.exec_prompt(prompt)
 
         result = gl.eq_principle.prompt_comparative(
             nondet,
-            principle="The final verdict must only be YES if the deliverable clearly satisfies all milestone requirements. If any important milestone is not met, verdict must be NO."
+            principle="The final verdict must only be YES if the deliverable clearly satisfies all checklist items. If any important checklist item is not met, verdict must be NO."
         )
 
         verdict_passed = "VERDICT: YES" in result.upper()
 
         self.jobs[job_id].ai_verdict = "passed" if verdict_passed else "failed"
         self.jobs[job_id].ai_reasoning = result
-        self.jobs[job_id].completed_at = "0"  # replace with timestamp if supported
+        self.jobs[job_id].completed_at = str(gl.message.timestamp)
+
+        # Update milestone statuses from AI result
+        lines = result.split("\n")
+        for line in lines:
+            line = line.strip()
+            if line.startswith("- "):
+                cleaned = line[2:]
+                parts = cleaned.split("|")
+                if len(parts) == 3:
+                    ms_id = parts[0].strip()
+                    verdict = parts[2].strip().upper()
+
+                    if ms_id in self.milestones:
+                        self.milestones[ms_id].status = "completed" if verdict == "YES" else "rejected"
+                        self.milestones[ms_id].ai_verdict = "passed" if verdict == "YES" else "failed"
+                        self.milestones[ms_id].ai_reasoning = "Verified during final payment review"
 
         freelancer_addr = Address(job.freelancer)
         escrow_amount = int(job.escrow_amount)
@@ -613,105 +629,67 @@ class VeriFree(gl.Contract):
                 self.user_profiles[freelancer_addr].active_jobs = str(max(0, current_active - 1))
                 self.user_profiles[freelancer_addr].total_earned = str(current_earned + escrow_amount)
 
-            # Mark milestones according to AI result
-            lines = result.split("\n")
-            for line in lines:
-                line = line.strip()
-                if line.startswith("- "):
-                    cleaned = line[2:]  # remove "- "
-                    parts = cleaned.split("|")
-                    if len(parts) == 3:
-                        ms_id = parts[0].strip()
-                        verdict = parts[2].strip().upper()
-
-                        if ms_id in self.milestones:
-                            if verdict == "YES":
-                                self.milestones[ms_id].status = "completed"
-                                self.milestones[ms_id].ai_verdict = "passed"
-                            else:
-                                self.milestones[ms_id].status = "rejected"
-                                self.milestones[ms_id].ai_verdict = "failed"
-
-                            self.milestones[ms_id].ai_reasoning = "Verified during final payment review"
-
         else:
             self.jobs[job_id].status = "revision_requested"
-
-            # Also update milestone statuses based on AI result
-            lines = result.split("\n")
-            for line in lines:
-                line = line.strip()
-                if line.startswith("- "):
-                    cleaned = line[2:]
-                    parts = cleaned.split("|")
-                    if len(parts) == 3:
-                        ms_id = parts[0].strip()
-                        verdict = parts[2].strip().upper()
-
-                        if ms_id in self.milestones:
-                            if verdict == "YES":
-                                self.milestones[ms_id].status = "completed"
-                                self.milestones[ms_id].ai_verdict = "passed"
-                            else:
-                                self.milestones[ms_id].status = "rejected"
-                                self.milestones[ms_id].ai_verdict = "failed"
-
-                            self.milestones[ms_id].ai_reasoning = "Verified during final payment review"
 
         return result
 
         # ==================== MILESTONE VERIFICATION ====================
 
-        @gl.public.write
-        def verify_milestone(self, job_id: str, milestone_id: str, proof_url: str) -> str:
-            assert job_id in self.jobs, "Job not found"
-            assert milestone_id in self.milestones, "Milestone not found"
+    @gl.public.write
+    def verify_milestone(self, job_id: str, milestone_id: str, proof_url: str) -> str:
+        assert job_id in self.jobs, "Job not found"
+        assert milestone_id in self.milestones, "Milestone not found"
 
-            job = self.jobs[job_id]
-            milestone = self.milestones[milestone_id]
+        job = self.jobs[job_id]
+        milestone = self.milestones[milestone_id]
 
-            assert milestone.job_id == job_id, "Milestone does not belong to this job"
-            assert job.freelancer == gl.message.sender_address.as_hex, "Not the freelancer"
-            assert milestone.status == "pending", "Milestone already processed"
+        assert milestone.job_id == job_id, "Milestone does not belong to this job"
+        assert job.freelancer == gl.message.sender_address.as_hex, "Not the freelancer"
+        assert milestone.status == "pending", "Milestone already processed"
 
-            def nondet():
-                content = gl.nondet.web.get(proof_url).body.decode("utf-8")
+        job_title = job.title
+        job_description = job.description
+        milestone_title = milestone.title
 
-                prompt = f"""
-        You are checking a single freelance job acceptance criterion.
+        def nondet():
+            content = gl.nondet.web.get(proof_url).body.decode("utf-8")
+            prompt = f"""
+    You are checking a single freelance job acceptance checklist item.
 
-        JOB TITLE:
-        {job.title}
+    JOB TITLE:
+    {job_title}
 
-        JOB DESCRIPTION:
-        {job.description}
+    JOB DESCRIPTION:
+    {job_description}
 
-        CHECKLIST ITEM:
-        {milestone.title}
+    CHECKLIST ITEM:
+    {milestone_title}
 
-        DELIVERABLE CONTENT:
-        {content[:3000]}
+    DELIVERABLE CONTENT:
+    {content[:3000]}
 
-        Return ONLY in this exact format:
+    Return ONLY in this exact format:
 
-        VERDICT: YES or NO
-        REASONING: [2 sentences max]
-        """
-                return gl.nondet.exec_prompt(prompt)
+    VERDICT: YES or NO
+    REASONING: [2 sentences max]
+    """
+            return gl.nondet.exec_prompt(prompt)  # inside nondet now
 
-            result = gl.eq_principle.prompt_comparative(
-                nondet,
-                principle="The verdict must correctly determine whether the submitted deliverable satisfies this specific acceptance checklist item."
-            )
+        result = gl.eq_principle.prompt_comparative(
+            nondet,
+            principle="The verdict must correctly determine whether the submitted deliverable satisfies this specific acceptance checklist item."
+        )
 
-            passed = "VERDICT: YES" in result.upper()
+        passed = "VERDICT: YES" in result.upper()
 
-            self.milestones[milestone_id].deliverable_url = proof_url
-            self.milestones[milestone_id].ai_verdict = "passed" if passed else "failed"
-            self.milestones[milestone_id].ai_reasoning = result
-            self.milestones[milestone_id].status = "completed" if passed else "rejected"
+        self.milestones[milestone_id].ai_verdict = "passed" if passed else "failed"
+        self.milestones[milestone_id].ai_reasoning = result
+        self.milestones[milestone_id].status = "completed" if passed else "rejected"
 
-            return result
+        return result
+
+
 
 #     # ==================== DISPUTES ====================
 

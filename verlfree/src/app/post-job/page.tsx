@@ -25,13 +25,11 @@ import {
   Wallet,
   Calendar as CalendarIcon
 } from "lucide-react";
-// import { aiGenerateJobCriteria } from "@/ai/flows/ai-generate-job-criteria-flow";
 import { toast } from "sonner";
 import { useCreateJob } from "@/hooks/useVerifree";
 
 export default function PostJob() {
   const [step, setStep] = useState(1);
-  const [loadingCriteria, setLoadingCriteria] = useState(false);
   const { mutate: createJob, isPending: isCreatingJob } = useCreateJob();
   
   const [formData, setFormData] = useState({
@@ -40,7 +38,7 @@ export default function PostJob() {
     category: "",
     budget: "",
     deadline: "",
-    criteria: "",
+    milestoneText: "",
   });
 
   const totalSteps = 4;
@@ -48,28 +46,25 @@ export default function PostJob() {
 
   const handleNext = () => setStep(s => Math.min(s + 1, totalSteps));
   const handleBack = () => setStep(s => Math.max(s - 1, 1));
-
-  const generateCriteria = async () => {
-    if (!formData.category || !formData.description) {
-      toast.error("Please fill in the job category and description first to get relevant criteria suggestions.");
-      return;
-    }
-    
-    setLoadingCriteria(true);
-    try {
-      const result = { suggestedCriteria: ["Criteria 1", "Criteria 2", "Criteria 3"] };
-      setFormData({ ...formData, criteria: result.suggestedCriteria.join("\n") });
-      toast.warning("AI has suggested success criteria based on your job details.");
-    } catch (err) {
-      toast.error("Failed to generate criteria. Please try again.");
-    } finally {
-      setLoadingCriteria(false);
-    }
-  };
-  
   
   const handleCreateJob = async () => {
   try {
+    
+    const milestoneTitles = formData.milestoneText
+      .split("\n")
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+
+    if (milestoneTitles.length === 0) {
+      toast.error("Please add at least one milestone / checklist item.");
+      return;
+    }
+
+    if (!formData.budget || Number(formData.budget) <= 0) {
+      toast.error("Please enter a valid GEN budget.");
+      return;
+    }
+
     await createJob({
       job_id: `job-${Date.now()}`,
       title: formData.title,
@@ -77,14 +72,13 @@ export default function PostJob() {
       category: formData.category,
       budget: formData.budget,
       deadline: formData.deadline,
+      milestone_titles: milestoneTitles, 
     });
-
-    toast.success("Your job has been posted and is now live!");
   } catch (err) {
     console.error(err);
-    toast.error("Failed to create job", {
-      description: err instanceof Error ? err.message : "Something went wrong",
-    });
+    // toast.error("Failed to create job", {
+    //   description: err instanceof Error ? err.message : "Something went wrong",
+    // });
   }
 };
 
@@ -160,22 +154,14 @@ export default function PostJob() {
                 >
                   <div className="flex justify-between items-center mb-4">
                     <Label>Success Criteria</Label>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={generateCriteria}
-                      disabled={loadingCriteria}
-                      className="border-primary/50 text-primary"
-                    >
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      {loadingCriteria ? "Generating..." : "Use AI Template"}
-                    </Button>
                   </div>
                   <Textarea 
                     rows={10} 
                     placeholder="Enter one criterion per line. This is what the AI will use to verify completion."
-                    value={formData.criteria}
-                    onChange={(e) => setFormData({...formData, criteria: e.target.value})}
+                    value={formData.milestoneText
+                    }
+                    onChange={(e) => setFormData({ ...formData, milestoneText: e.target.value })}
+
                   />
                   <p className="text-xs text-muted-foreground">
                     Tip: Be as specific as possible (e.g., "Page must load in under 2s" rather than "Fast loading").
@@ -252,7 +238,7 @@ export default function PostJob() {
                     <div>
                       <p className="text-xs font-bold text-muted-foreground uppercase">Criteria</p>
                       <p className="text-sm text-muted-foreground italic line-clamp-3">
-                        {formData.criteria || "No criteria specified"}
+                        {formData.milestoneText || "No criteria specified"}
                       </p>
                     </div>
                   </div>
