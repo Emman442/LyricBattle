@@ -1,5 +1,5 @@
 import { createClient } from "genlayer-js";
-import { studionet } from "genlayer-js/chains";
+import { testnetBradbury } from "genlayer-js/chains";
 import { Job, JobApplication, TransactionReceipt, UserProfile } from "../types/types";
 import {parseEther} from "viem";
 
@@ -12,10 +12,12 @@ class VeriFree {
         address?: string | null,
         studioUrl?: string
     ) {
+
+    
         this.contractAddress = contractAddress as `0x${string}`;
 
         const config: any = {
-            chain: studionet,
+            chain: testnetBradbury,
         };
 
         if (address) {
@@ -31,7 +33,7 @@ class VeriFree {
 
     updateAccount(address: string): void {
         const config: any = {
-            chain: studionet,
+            chain: testnetBradbury,
             account: address as `0x${string}`,
         };
 
@@ -43,6 +45,7 @@ class VeriFree {
      * @returns a user profile object with all relevant details
      */
     async CheckIfProfileExists(account_address: string): Promise<boolean> {
+        
         try {
             const profile_exists: any = await this.client.readContract({
                 address: this.contractAddress,
@@ -132,8 +135,6 @@ class VeriFree {
 
 
 
-
-
     // Add more contract interaction methods as needed
 
     async createProfile(username: string, bio: string, role: "client" | "freelancer") {
@@ -144,6 +145,7 @@ class VeriFree {
                 args: [username, bio, role],
                 value: BigInt(0), // No ETH sent with this transaction
             });
+
 
             const receipt = await this.client.waitForTransactionReceipt({
                 hash: txHash,

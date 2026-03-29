@@ -1,11 +1,10 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo} from "react";
 import VeriFree from "../lib/contracts/Verifree"
 import { getContractAddress, getStudioUrl } from "../components/genlayer/client";
 import { useWallet } from "../components/genlayer/wallet";
-// import { success, error, configError } from "../utils/toast";
 import type { UserProfile } from "../lib/types/types";
 import {toast} from "sonner";
 
