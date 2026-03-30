@@ -1,4 +1,4 @@
-import { createClient } from "genlayer-js";
+import { createAccount, createClient } from "genlayer-js";
 import { testnetBradbury } from "genlayer-js/chains";
 import { Job, JobApplication, TransactionReceipt, UserProfile } from "../types/types";
 import {parseEther} from "viem";
@@ -7,29 +7,14 @@ class VeriFree {
     private contractAddress: `0x${string}`;
     private client: ReturnType<typeof createClient>;
 
-    constructor(
-        contractAddress: string,
-        address?: string | null,
-        studioUrl?: string
-    ) {
 
-    
-        this.contractAddress = contractAddress as `0x${string}`;
-
-        const config: any = {
-            chain: testnetBradbury,
-        };
-
-        if (address) {
-            config.account = address as `0x${string}`;
-        }
-
-        if (studioUrl) {
-            config.endpoint = studioUrl;
-        }
-
-        this.client = createClient(config);
-    }
+   constructor(contractAddress: string, account: string) {
+    this.contractAddress = contractAddress as `0x${string}`;
+    this.client = createClient({
+        chain: testnetBradbury,
+        account: account as `0x${string}`,
+    });
+}
 
     updateAccount(address: string): void {
         const config: any = {
@@ -45,6 +30,11 @@ class VeriFree {
      * @returns a user profile object with all relevant details
      */
     async CheckIfProfileExists(account_address: string): Promise<boolean> {
+
+        console.log("Checking profile exists for:", account_address);
+        console.log("Contract:", this.contractAddress);
+        console.log(this.client)
+
         
         try {
             const profile_exists: any = await this.client.readContract({
@@ -160,12 +150,12 @@ class VeriFree {
             throw new Error("Failed to create profile");
         }
     }
-    async createJob(job_id: string, title: string, description: string, category: string, budget: string, deadline: string, milestone_titles: string[]) {
+    async createJob(job_id: string, title: string, description: string, category: string, budget: string, is_public: boolean, deadline: string, milestone_titles: string[]) {
         try {
             const txHash = await this.client.writeContract({
                 address: this.contractAddress,
                 functionName: "create_job",
-                args: [job_id, title, description, category, budget, deadline, milestone_titles],
+                args: [job_id, title, description, category, budget, is_public, deadline, milestone_titles],
                 value: parseEther(budget),
             });
 

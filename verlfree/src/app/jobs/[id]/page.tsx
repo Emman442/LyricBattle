@@ -23,16 +23,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import { useParams } from "next/navigation";
-import { 
-  useFirestore, 
-  useDoc, 
-  useCollection, 
-  useUser, 
-  useMemoFirebase,
-  updateDocumentNonBlocking
-} from "@/firebase";
-import { doc, collection } from "firebase/firestore";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 // Demo Data Fallback
 const MOCK_JOB_DATA: Record<string, any> = {
@@ -58,41 +49,19 @@ const MOCK_APPLICATIONS = [
 
 export default function JobDetail() {
   const { id } = useParams();
-  const db = useFirestore();
-  const { user } = useUser();
-  const { toast } = useToast();
-  
   const [verifying, setVerifying] = useState(false);
   const [isAIReordering, setIsAIReordering] = useState(false);
   const [deliverableUrl, setDeliverableUrl] = useState("");
   const [localJobState, setLocalJobState] = useState<any>(null);
   const [localApps, setLocalApps] = useState(MOCK_APPLICATIONS);
 
-  // Firestore Fetch
-  const jobRef = useMemoFirebase(() => {
-    if (!db || !id || (id as string).startsWith('demo-')) return null;
-    return doc(db, "jobs", id as string);
-  }, [db, id]);
-  const { data: firestoreJob, isLoading: jobLoading } = useDoc(jobRef);
-
-  // Sync Local State with Firestore or Mock
-  useEffect(() => {
-    if (firestoreJob) {
-      setLocalJobState(firestoreJob);
-    } else if (id && MOCK_JOB_DATA[id as string]) {
-      setLocalJobState(MOCK_JOB_DATA[id as string]);
-    }
-  }, [firestoreJob, id]);
 
   const isClient = user && (localJobState?.clientId === user.uid || (id as string).startsWith('demo-'));
   const isAssignedFreelancer = user && localJobState?.assignedFreelancerId === user.uid;
 
   const handleAIShortlist = () => {
     setIsAIReordering(true);
-    toast({
-      title: "AI Analyzing Applicants",
-      description: "Comparing cover notes, skills, and on-chain history...",
-    });
+
     
     setTimeout(() => {
       const reordered = [...localApps].sort((a, b) => (a.isAIRecommended ? -1 : 1));
@@ -110,10 +79,8 @@ export default function JobDetail() {
       setLocalJobState({ ...localJobState, status: "Active", assignedFreelancerId: app.freelancerId });
       setLocalApps(localApps.map(a => ({ ...a, status: a.id === app.id ? "Selected" : "Rejected" })));
     } else if (db && localJobState) {
-      updateDocumentNonBlocking(doc(db, "jobs", localJobState.id), {
         status: "Active",
-        assignedFreelancerId: app.freelancerId,
-        updatedAt: new Date().toISOString()
+
       });
     }
 

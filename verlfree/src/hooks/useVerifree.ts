@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo} from "react";
 import VeriFree from "../lib/contracts/Verifree"
-import { getContractAddress, getStudioUrl } from "../components/genlayer/client";
+import { getContractAddress} from "../components/genlayer/client";
 import { useWallet } from "../components/genlayer/wallet";
 import type { UserProfile } from "../lib/types/types";
 import {toast} from "sonner";
@@ -12,14 +12,13 @@ import {toast} from "sonner";
 export function useVeriFreeContract(): VeriFree | null {
     const { address } = useWallet();
     const contractAddress = getContractAddress();
-    const studioUrl = getStudioUrl();
 
     return useMemo(() => {
-        if (!contractAddress || !studioUrl) {
+        if (!contractAddress || !address) {
             return null;
         }
-        return new VeriFree(contractAddress, address, studioUrl);
-    }, [contractAddress, address, studioUrl]);
+        return new VeriFree(contractAddress, address);
+    }, [contractAddress, address]);
 }
 
 export function useCheckIfProfileExists(account_address: string | null) {
@@ -101,6 +100,7 @@ export function useCreateJob() {
             category,
             budget,
             deadline,
+            is_public,
             milestone_titles,
         }: {
             job_id: string;
@@ -109,13 +109,14 @@ export function useCreateJob() {
             category: string;
             budget: string;
             deadline: string;
+            is_public: boolean;
             milestone_titles: string[];
         }) => {
             if (!contract) {
                 throw new Error("Contract not initialized");
             }
 
-            const receipt = await contract.createJob(job_id, title, description, category, budget, deadline, milestone_titles);
+            const receipt = await contract.createJob(job_id, title, description, category, budget, is_public, deadline, milestone_titles);
             console.log("Job creation transaction receipt:", receipt);
             return receipt;
         },
