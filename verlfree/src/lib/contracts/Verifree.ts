@@ -30,11 +30,6 @@ class VeriFree {
      * @returns a user profile object with all relevant details
      */
     async CheckIfProfileExists(account_address: string): Promise<boolean> {
-
-        console.log("Checking profile exists for:", account_address);
-        console.log("Contract:", this.contractAddress);
-        console.log(this.client)
-
         
         try {
             const profile_exists: any = await this.client.readContract({
@@ -128,18 +123,19 @@ class VeriFree {
     // Add more contract interaction methods as needed
 
     async createProfile(username: string, bio: string, role: "client" | "freelancer") {
+    
         try {
             const txHash = await this.client.writeContract({
                 address: this.contractAddress,
                 functionName: "create_profile",
                 args: [username, bio, role],
-                value: BigInt(0), // No ETH sent with this transaction
+                value: BigInt(0),
             });
 
 
             const receipt = await this.client.waitForTransactionReceipt({
                 hash: txHash,
-                status: "ACCEPTED" as any,
+                status: 'FINALIZED' as any,
                 retries: 24,
                 interval: 5000,
             });
@@ -150,6 +146,8 @@ class VeriFree {
             throw new Error("Failed to create profile");
         }
     }
+
+    
     async createJob(job_id: string, title: string, description: string, category: string, budget: string, is_public: boolean, deadline: string, milestone_titles: string[]) {
         try {
             const txHash = await this.client.writeContract({

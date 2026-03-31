@@ -35,9 +35,9 @@ export default function Navbar() {
   const isUserLoading = false;
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [hasChecked, setHasChecked] = useState(false);
-  console.log(address)
+ 
   const { isLoading, data: profileExists } = useCheckIfProfileExists(address);
-  console.log("Profile exists:", profileExists);
+
 
 
   // Run check whenever address changes
