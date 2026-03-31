@@ -3,13 +3,13 @@ import { testnetBradbury } from "genlayer-js/chains";
 import { Job, JobApplication, TransactionReceipt, UserProfile } from "../types/types";
 import { parseEther } from "viem";
 import { TransactionStatus } from "genlayer-js/types"
-import { Provider } from "@radix-ui/react-toast";
+import { useWallet } from "@/components/genlayer/wallet";
+
 
 class VeriFree {
     private contractAddress: `0x${string}`;
     private readClient: ReturnType<typeof createClient>;
     private writeClient: ReturnType<typeof createClient>;
-
 
     constructor(contractAddress: string, account: string) {
         this.contractAddress = contractAddress as `0x${string}`;
@@ -32,7 +32,7 @@ class VeriFree {
         const writeConfig: any = {
             chain: testnetBradbury,
             account: address as `0x${string}`,
-            Provider: window.ethereum,
+            provider: window.ethereum,
         };
 
         this.readClient = createClient(readConfig);
@@ -130,6 +130,19 @@ class VeriFree {
             throw new Error("Failed to fetch all jobs");
         }
     }
+    async getJobByID(job_id: string): Promise<Job> {
+        try {
+            const jobs: any = await this.readClient.readContract({
+                address: this.contractAddress,
+                functionName: "fetch_job_by_id",
+                args: [job_id],
+            });
+            return jobs as Job;
+        } catch (error) {
+            console.error("Error fetching job by ID:", error);
+            throw new Error("Failed to fetch job by ID");
+        }
+    }
 
 
 
@@ -149,9 +162,7 @@ class VeriFree {
 
             const receipt = await this.writeClient.waitForTransactionReceipt({
                 hash: txHash,
-                status: TransactionStatus.FINALIZED,
-                retries: 60,
-                interval: 5000,
+                status: TransactionStatus.ACCEPTED,
             });
 
             console.log("Receopttt", receipt)
@@ -175,9 +186,7 @@ class VeriFree {
 
             const receipt = await this.writeClient.waitForTransactionReceipt({
                 hash: txHash,
-                status: TransactionStatus.FINALIZED,
-                retries: 24,
-                interval: 5000,    
+                status: TransactionStatus.ACCEPTED,  
             });
 
             return receipt as TransactionReceipt;
@@ -198,9 +207,7 @@ class VeriFree {
 
             const receipt = await this.writeClient.waitForTransactionReceipt({
                 hash: txHash,
-                status: "ACCEPTED" as any,
-                retries: 24,
-                interval: 5000,
+                status: TransactionStatus.ACCEPTED,
             });
 
             return receipt as TransactionReceipt;
@@ -221,9 +228,7 @@ class VeriFree {
 
             const receipt = await this.writeClient.waitForTransactionReceipt({
                 hash: txHash,
-                status: "ACCEPTED" as any,
-                retries: 24,
-                interval: 5000,
+                status: TransactionStatus.ACCEPTED,
             });
 
             return receipt as TransactionReceipt;
@@ -244,9 +249,7 @@ class VeriFree {
 
             const receipt = await this.writeClient.waitForTransactionReceipt({
                 hash: txHash,
-                status: "ACCEPTED" as any,
-                retries: 24,
-                interval: 5000,
+                status: TransactionStatus.ACCEPTED,
             });
 
             return receipt as TransactionReceipt;
@@ -267,8 +270,8 @@ class VeriFree {
 
             const receipt = await this.writeClient.waitForTransactionReceipt({
                 hash: txHash,
-                status: "ACCEPTED" as any,
-                retries: 24,
+                status: TransactionStatus.ACCEPTED,
+                retries: 120,
                 interval: 5000,
             });
         } catch (error) {
@@ -288,9 +291,7 @@ class VeriFree {
 
             const receipt = await this.writeClient.waitForTransactionReceipt({
                 hash: txHash,
-                status: "ACCEPTED" as any,
-                retries: 24,
-                interval: 5000,
+                status: TransactionStatus.ACCEPTED,
             });
 
             return receipt as TransactionReceipt;
@@ -311,7 +312,7 @@ class VeriFree {
 
             const receipt = await this.writeClient.waitForTransactionReceipt({
                 hash: txHash,
-                status: "ACCEPTED" as any,
+                status: TransactionStatus.ACCEPTED,
                 retries: 24,
                 interval: 5000,
             });
@@ -334,7 +335,7 @@ class VeriFree {
 
             const receipt = await this.writeClient.waitForTransactionReceipt({
                 hash: txHash,
-                status: "ACCEPTED" as any,
+                status: TransactionStatus.ACCEPTED,
                 retries: 24,
                 interval: 5000,
             });
@@ -355,8 +356,8 @@ class VeriFree {
 
             const receipt = await this.writeClient.waitForTransactionReceipt({
                 hash: txHash,
-                status: "ACCEPTED" as any,
-                retries: 24,
+                status: TransactionStatus.ACCEPTED,
+                retries: 120,
                 interval: 5000,
             });
 

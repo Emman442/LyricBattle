@@ -16,12 +16,13 @@ export interface Job {
     title: string;
     description: string;
     budget: string;
-    status: "open" | "in_progress" | "completed";
-    // client_id: string;
+    status: "active" | "in_progress" | "completed" | "pending";
+    freelancer: string;
     category: string;
     deadline: string;
     escrow_amount: string;
-    
+    client: string;
+
 }
 
 export interface JobApplication {

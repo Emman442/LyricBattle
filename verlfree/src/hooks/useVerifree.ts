@@ -5,7 +5,7 @@ import { useMemo} from "react";
 import VeriFree from "../lib/contracts/Verifree"
 import { getContractAddress} from "../components/genlayer/client";
 import { useWallet } from "../components/genlayer/wallet";
-import type { UserProfile } from "../lib/types/types";
+import type { Job, UserProfile } from "../lib/types/types";
 import {toast} from "sonner";
 
 
@@ -47,6 +47,20 @@ export function useUserProfile(account_address: string) {
                 throw new Error("Contract not initialized");
             }
             return contract.getUserProfile(account_address);
+        },
+    });
+}
+
+export function useJobByID(job_id: string) {
+    const contract = useVeriFreeContract();
+
+    return useQuery<Job, Error>({
+        queryKey: ["jobByID", job_id],
+        queryFn: () => {
+            if (!contract) {
+                throw new Error("Contract not initialized");
+            }
+            return contract.getJobByID(job_id);
         },
     });
 }
