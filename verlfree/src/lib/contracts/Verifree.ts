@@ -3,27 +3,40 @@ import { testnetBradbury } from "genlayer-js/chains";
 import { Job, JobApplication, TransactionReceipt, UserProfile } from "../types/types";
 import { parseEther } from "viem";
 import { TransactionStatus } from "genlayer-js/types"
+import { Provider } from "@radix-ui/react-toast";
 
 class VeriFree {
     private contractAddress: `0x${string}`;
-    private client: ReturnType<typeof createClient>;
+    private readClient: ReturnType<typeof createClient>;
+    private writeClient: ReturnType<typeof createClient>;
 
 
     constructor(contractAddress: string, account: string) {
         this.contractAddress = contractAddress as `0x${string}`;
-        this.client = createClient({
+        this.readClient = createClient({
+            chain: testnetBradbury,
+        });
+
+
+        this.writeClient = createClient({
             chain: testnetBradbury,
             account: account as `0x${string}`,
+            provider: window.ethereum,
         });
     }
 
     updateAccount(address: string): void {
-        const config: any = {
+        const readConfig: any = {
+            chain: testnetBradbury,
+        };
+        const writeConfig: any = {
             chain: testnetBradbury,
             account: address as `0x${string}`,
+            Provider: window.ethereum,
         };
 
-        this.client = createClient(config);
+        this.readClient = createClient(readConfig);
+        this.writeClient = createClient(writeConfig);
     }
 
     /**
@@ -33,7 +46,7 @@ class VeriFree {
     async CheckIfProfileExists(account_address: string): Promise<boolean> {
 
         try {
-            const profile_exists: any = await this.client.readContract({
+            const profile_exists: any = await this.readClient.readContract({
                 address: this.contractAddress,
                 functionName: "profile_exists",
                 args: [account_address],
@@ -48,7 +61,7 @@ class VeriFree {
     }
     async getUserProfile(account_address: string): Promise<UserProfile> {
         try {
-            const profile: any = await this.client.readContract({
+            const profile: any = await this.readClient.readContract({
                 address: this.contractAddress,
                 functionName: "fetch_profile",
                 args: [account_address],
@@ -65,7 +78,7 @@ class VeriFree {
 
     async getJobApplications(job_id: string): Promise<JobApplication[]> {
         try {
-            const applications: any = await this.client.readContract({
+            const applications: any = await this.readClient.readContract({
                 address: this.contractAddress,
                 functionName: "get_applications",
                 args: [job_id],
@@ -79,7 +92,7 @@ class VeriFree {
 
     async getClientJobs(client_address: string): Promise<any[]> {
         try {
-            const jobs: any = await this.client.readContract({
+            const jobs: any = await this.readClient.readContract({
                 address: this.contractAddress,
                 functionName: "get_client_jobs",
                 args: [client_address],
@@ -93,7 +106,7 @@ class VeriFree {
 
     async getFreelancerJobs(freelancer_address: string): Promise<any[]> {
         try {
-            const jobs: any = await this.client.readContract({
+            const jobs: any = await this.readClient.readContract({
                 address: this.contractAddress,
                 functionName: "get_freelancer_jobs",
                 args: [freelancer_address],
@@ -107,7 +120,7 @@ class VeriFree {
 
     async getAllJobs(): Promise<Job[]> {
         try {
-            const jobs: any = await this.client.readContract({
+            const jobs: any = await this.readClient.readContract({
                 address: this.contractAddress,
                 functionName: "fetch_jobs",
             });
@@ -126,7 +139,7 @@ class VeriFree {
     async createProfile(username: string, bio: string, role: "client" | "freelancer") {
 
         try {
-            const txHash = await this.client.writeContract({
+            const txHash = await this.writeClient.writeContract({
                 address: this.contractAddress,
                 functionName: "create_profile",
                 args: [username, bio, role],
@@ -134,7 +147,7 @@ class VeriFree {
             });
 
 
-            const receipt = await this.client.waitForTransactionReceipt({
+            const receipt = await this.writeClient.waitForTransactionReceipt({
                 hash: txHash,
                 status: TransactionStatus.FINALIZED,
                 retries: 60,
@@ -153,14 +166,14 @@ class VeriFree {
 
     async createJob(job_id: string, title: string, description: string, category: string, budget: string, deadline: string, is_public: boolean, milestone_titles: string[]) {
         try {
-            const txHash = await this.client.writeContract({
+            const txHash = await this.writeClient.writeContract({
                 address: this.contractAddress,
                 functionName: "create_job",
                 args: [job_id, title, description, category, budget, deadline, is_public, milestone_titles],
                 value: parseEther(budget),
             });
 
-            const receipt = await this.client.waitForTransactionReceipt({
+            const receipt = await this.writeClient.waitForTransactionReceipt({
                 hash: txHash,
                 status: TransactionStatus.FINALIZED,
                 retries: 24,
@@ -176,14 +189,14 @@ class VeriFree {
 
     async ApplyForJob(job_id: string, cover_note: string) {
         try {
-            const txHash = await this.client.writeContract({
+            const txHash = await this.writeClient.writeContract({
                 address: this.contractAddress,
                 functionName: "apply_for_job",
                 args: [job_id, cover_note],
                 value: BigInt(0), // No ETH sent with this transaction
             });
 
-            const receipt = await this.client.waitForTransactionReceipt({
+            const receipt = await this.writeClient.waitForTransactionReceipt({
                 hash: txHash,
                 status: "ACCEPTED" as any,
                 retries: 24,
@@ -199,14 +212,14 @@ class VeriFree {
 
     async rejectApplication(job_id: string, freelancer_address: string) {
         try {
-            const txHash = await this.client.writeContract({
+            const txHash = await this.writeClient.writeContract({
                 address: this.contractAddress,
                 functionName: "reject_applicant",
                 args: [job_id, freelancer_address],
                 value: BigInt(0), // No ETH sent with this transaction
             });
 
-            const receipt = await this.client.waitForTransactionReceipt({
+            const receipt = await this.writeClient.waitForTransactionReceipt({
                 hash: txHash,
                 status: "ACCEPTED" as any,
                 retries: 24,
@@ -222,14 +235,14 @@ class VeriFree {
 
     async selectApplication(job_id: string, freelancer_address: string) {
         try {
-            const txHash = await this.client.writeContract({
+            const txHash = await this.writeClient.writeContract({
                 address: this.contractAddress,
                 functionName: "select_freelancer",
                 args: [job_id, freelancer_address],
                 value: BigInt(0), // No ETH sent with this transaction
             });
 
-            const receipt = await this.client.waitForTransactionReceipt({
+            const receipt = await this.writeClient.waitForTransactionReceipt({
                 hash: txHash,
                 status: "ACCEPTED" as any,
                 retries: 24,
@@ -245,14 +258,14 @@ class VeriFree {
 
     async aiShortlist(job_id: string) {
         try {
-            const txHash = await this.client.writeContract({
+            const txHash = await this.writeClient.writeContract({
                 address: this.contractAddress,
                 functionName: "ai_shortlist_applicants",
                 args: [job_id],
                 value: BigInt(0), // No ETH sent with this transaction
             });
 
-            const receipt = await this.client.waitForTransactionReceipt({
+            const receipt = await this.writeClient.waitForTransactionReceipt({
                 hash: txHash,
                 status: "ACCEPTED" as any,
                 retries: 24,
@@ -266,14 +279,14 @@ class VeriFree {
 
     async submitDeliverable(job_id: string, deliverable_url: string, deliverable_note: string) {
         try {
-            const txHash = await this.client.writeContract({
+            const txHash = await this.writeClient.writeContract({
                 address: this.contractAddress,
                 functionName: "submit_deliverable",
                 args: [job_id, deliverable_url, deliverable_note],
                 value: BigInt(0), // No ETH sent with this transaction
             });
 
-            const receipt = await this.client.waitForTransactionReceipt({
+            const receipt = await this.writeClient.waitForTransactionReceipt({
                 hash: txHash,
                 status: "ACCEPTED" as any,
                 retries: 24,
@@ -289,14 +302,14 @@ class VeriFree {
 
     async verifyAndPay(job_id: string) {
         try {
-            const txHash = await this.client.writeContract({
+            const txHash = await this.writeClient.writeContract({
                 address: this.contractAddress,
                 functionName: "verify_and_pay",
                 args: [job_id],
                 value: BigInt(0), // No ETH sent with this transaction
             });
 
-            const receipt = await this.client.waitForTransactionReceipt({
+            const receipt = await this.writeClient.waitForTransactionReceipt({
                 hash: txHash,
                 status: "ACCEPTED" as any,
                 retries: 24,
@@ -312,14 +325,14 @@ class VeriFree {
 
     async verifyMilestone(job_id: string, milestone_id: string, proof_url: string) {
         try {
-            const txHash = await this.client.writeContract({
+            const txHash = await this.writeClient.writeContract({
                 address: this.contractAddress,
                 functionName: "verify_milestone",
                 args: [job_id, milestone_id, proof_url],
                 value: BigInt(0), // No ETH sent with this transaction
             });
 
-            const receipt = await this.client.waitForTransactionReceipt({
+            const receipt = await this.writeClient.waitForTransactionReceipt({
                 hash: txHash,
                 status: "ACCEPTED" as any,
                 retries: 24,
@@ -333,14 +346,14 @@ class VeriFree {
 
     async raiseDispute(job_id: string, context_url: string, explanation: string) {
         try {
-            const txHash = await this.client.writeContract({
+            const txHash = await this.writeClient.writeContract({
                 address: this.contractAddress,
                 functionName: "raise_dispute",
                 args: [job_id, context_url, explanation],
                 value: BigInt(0), // No ETH sent with this transaction
             });
 
-            const receipt = await this.client.waitForTransactionReceipt({
+            const receipt = await this.writeClient.waitForTransactionReceipt({
                 hash: txHash,
                 status: "ACCEPTED" as any,
                 retries: 24,
