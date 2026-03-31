@@ -39,6 +39,7 @@ export default function PostJob() {
     budget: "",
     deadline: "",
     milestoneText: "",
+    isPublic: true
   });
 
   const totalSteps = 4;
@@ -48,6 +49,7 @@ export default function PostJob() {
   const handleBack = () => setStep(s => Math.max(s - 1, 1));
   
   const handleCreateJob = async () => {
+    console.log("Creating job with data:", formData);
   try {
     
     const milestoneTitles = formData.milestoneText
@@ -72,13 +74,12 @@ export default function PostJob() {
       category: formData.category,
       budget: formData.budget,
       deadline: formData.deadline,
+      is_public: formData.isPublic,
       milestone_titles: milestoneTitles, 
     });
   } catch (err) {
     console.error(err);
-    // toast.error("Failed to create job", {
-    //   description: err instanceof Error ? err.message : "Something went wrong",
-    // });
+    toast.error("Something Went Wrogn while creating job. Please try again later.");
   }
 };
 

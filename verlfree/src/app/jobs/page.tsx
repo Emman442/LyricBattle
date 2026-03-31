@@ -19,10 +19,10 @@ import {
 } from "@/components/ui/dialog";
 import { Search, Filter, Clock, Check, Sparkles, Users } from "lucide-react";
 import Link from "next/link";
-import { 
-  useUser, 
-} from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
+import { useWallet } from "@/components/genlayer/wallet";
+import { toast } from "sonner";
+import { useGetJobs } from "@/hooks/useVerifree";
 
 const MOCK_JOBS = [
   {
@@ -64,8 +64,9 @@ const MOCK_JOBS = [
 ];
 
 export default function JobBoard() {
-  const { user } = useUser();
-  const { toast } = useToast();
+  const {isFetching, data: jobs} = useGetJobs()
+  console.log("Fetched jobs:", jobs)
+  const {address} = useWallet()
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [coverNote, setCoverNote] = useState("");
@@ -73,12 +74,8 @@ export default function JobBoard() {
   const [appliedJobIds, setAppliedJobIds] = useState<string[]>([]);
 
   const handleOpenApply = (job: any) => {
-    if (!user) {
-      toast({
-        title: "Authentication Required",
-        description: "Please connect your wallet to apply for jobs.",
-        variant: "destructive"
-      });
+    if (!address) {
+      toast.info("Please connect your wallet to apply for jobs.");
       return;
     }
     setSelectedJob(job);
@@ -96,10 +93,10 @@ export default function JobBoard() {
       setIsApplyModalOpen(false);
       setCoverNote("");
       setSelectedJob(null);
-      toast({
-        title: "Application Submitted",
-        description: "Your proposal has been sent to the client.",
-      });
+      // toast({
+      //   title: "Application Submitted",
+      //   description: "Your proposal has been sent to the client.",
+      // });
     }, 1000);
   };
 
@@ -150,13 +147,13 @@ export default function JobBoard() {
           </div>
 
           <div className="md:col-span-3 space-y-4">
-            {MOCK_JOBS.map((job, i) => {
-              const isApplied = appliedJobIds.includes(job.id);
-              const applicantCount = job.applicantIds?.length || 0;
+            {jobs?.map((job, i) => {
+              const isApplied = appliedJobIds.includes(job.job_id);
+              const applicantCount = job.job_id?.length || 0;
 
               return (
                 <motion.div
-                  key={job.id}
+                  key={job.job_id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.1 }}
@@ -186,7 +183,7 @@ export default function JobBoard() {
                         </div>
                         <div className="flex flex-row md:flex-col justify-between md:items-end gap-4 shrink-0">
                           <div className="text-left md:text-right">
-                            <p className="text-2xl font-black text-foreground">{job.budget} GEN</p>
+                            <p className="text-2xl font-black text-foreground">{job.escrow_amount} GEN</p>
                             <p className="text-xs text-muted-foreground uppercase tracking-widest">Fixed Price</p>
                           </div>
                           
@@ -198,7 +195,7 @@ export default function JobBoard() {
                           ) : (
                             <div className="flex gap-2">
                               <Button asChild variant="ghost" className="text-xs">
-                                <Link href={`/jobs/${job.id}`}>Details</Link>
+                                <Link href={`/jobs/${job.job_id}`}>Details</Link>
                               </Button>
                               <Button onClick={() => handleOpenApply(job)} className="bg-primary px-8">
                                 Apply Now

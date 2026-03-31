@@ -1,20 +1,21 @@
 import { createAccount, createClient } from "genlayer-js";
 import { testnetBradbury } from "genlayer-js/chains";
 import { Job, JobApplication, TransactionReceipt, UserProfile } from "../types/types";
-import {parseEther} from "viem";
+import { parseEther } from "viem";
+import { TransactionStatus } from "genlayer-js/types"
 
 class VeriFree {
     private contractAddress: `0x${string}`;
     private client: ReturnType<typeof createClient>;
 
 
-   constructor(contractAddress: string, account: string) {
-    this.contractAddress = contractAddress as `0x${string}`;
-    this.client = createClient({
-        chain: testnetBradbury,
-        account: account as `0x${string}`,
-    });
-}
+    constructor(contractAddress: string, account: string) {
+        this.contractAddress = contractAddress as `0x${string}`;
+        this.client = createClient({
+            chain: testnetBradbury,
+            account: account as `0x${string}`,
+        });
+    }
 
     updateAccount(address: string): void {
         const config: any = {
@@ -30,7 +31,7 @@ class VeriFree {
      * @returns a user profile object with all relevant details
      */
     async CheckIfProfileExists(account_address: string): Promise<boolean> {
-        
+
         try {
             const profile_exists: any = await this.client.readContract({
                 address: this.contractAddress,
@@ -123,7 +124,7 @@ class VeriFree {
     // Add more contract interaction methods as needed
 
     async createProfile(username: string, bio: string, role: "client" | "freelancer") {
-    
+
         try {
             const txHash = await this.client.writeContract({
                 address: this.contractAddress,
@@ -135,10 +136,12 @@ class VeriFree {
 
             const receipt = await this.client.waitForTransactionReceipt({
                 hash: txHash,
-                status: 'FINALIZED' as any,
-                retries: 24,
+                status: TransactionStatus.FINALIZED,
+                retries: 60,
                 interval: 5000,
             });
+
+            console.log("Receopttt", receipt)
 
             return receipt as TransactionReceipt;
         } catch (error) {
@@ -147,21 +150,21 @@ class VeriFree {
         }
     }
 
-    
-    async createJob(job_id: string, title: string, description: string, category: string, budget: string, is_public: boolean, deadline: string, milestone_titles: string[]) {
+
+    async createJob(job_id: string, title: string, description: string, category: string, budget: string, deadline: string, is_public: boolean, milestone_titles: string[]) {
         try {
             const txHash = await this.client.writeContract({
                 address: this.contractAddress,
                 functionName: "create_job",
-                args: [job_id, title, description, category, budget, is_public, deadline, milestone_titles],
+                args: [job_id, title, description, category, budget, deadline, is_public, milestone_titles],
                 value: parseEther(budget),
             });
 
             const receipt = await this.client.waitForTransactionReceipt({
                 hash: txHash,
-                status: "ACCEPTED" as any,
+                status: TransactionStatus.FINALIZED,
                 retries: 24,
-                interval: 5000,
+                interval: 5000,    
             });
 
             return receipt as TransactionReceipt;

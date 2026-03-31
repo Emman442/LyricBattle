@@ -116,7 +116,7 @@ export function useCreateJob() {
                 throw new Error("Contract not initialized");
             }
 
-            const receipt = await contract.createJob(job_id, title, description, category, budget, is_public, deadline, milestone_titles);
+            const receipt = await contract.createJob(job_id, title, description, category, budget, deadline, is_public,milestone_titles);
             console.log("Job creation transaction receipt:", receipt);
             return receipt;
         },

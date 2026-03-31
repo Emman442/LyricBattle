@@ -200,6 +200,13 @@ class VeriFree(gl.Contract):
         return result
 
     @gl.public.view
+    def fetch_job_by_id(self, job_id: str) -> Job:
+        assert job_id in self.jobs, "Job not found"
+        return self.jobs[job_id]
+
+
+
+    @gl.public.view
     def get_client_jobs(self, client_address: str) -> list[Job]:
         result = []
         for job_id in self.job_ids:

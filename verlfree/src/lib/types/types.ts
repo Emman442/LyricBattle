@@ -12,15 +12,16 @@ export interface UserProfile {
 }
 
 export interface Job {
-    id: string;
+    job_id: string;
     title: string;
     description: string;
     budget: string;
     status: "open" | "in_progress" | "completed";
-    client_id: string;
-    freelancer_id?: string;
-    created_at: string;
-    updated_at: string;
+    // client_id: string;
+    category: string;
+    deadline: string;
+    escrow_amount: string;
+    
 }
 
 export interface JobApplication {
