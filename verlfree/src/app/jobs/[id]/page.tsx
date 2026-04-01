@@ -23,9 +23,8 @@ import {
   AlertCircle
 } from "lucide-react";
 import { useParams } from "next/navigation";
-import { toast } from "sonner";
 import { useWallet } from "@/components/genlayer/wallet";
-import { useJobByID } from "@/hooks/useVerifree";
+import { useGetJobMilestones, useJobByID } from "@/hooks/useVerifree";
 
 // Demo Data Fallback
 const MOCK_JOB_DATA: Record<string, any> = {
@@ -57,6 +56,8 @@ export default function JobDetail() {
   const [localApps, setLocalApps] = useState(MOCK_APPLICATIONS);
   const { address } = useWallet();
   const {isFetching: jobLoading, data: jobData} = useJobByID(id as string);
+   const {isFetching: isLoadingJobMilestones, data: jobMilestones} = useGetJobMilestones(id as string);
+  console.log("Selected Job Milestones:", jobMilestones);
 
 
   const isClient = address && (jobData?.client == address);

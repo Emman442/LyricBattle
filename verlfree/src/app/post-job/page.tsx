@@ -20,10 +20,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { 
   ArrowRight, 
   ArrowLeft, 
-  Sparkles, 
   CheckCircle2, 
   Wallet,
-  Calendar as CalendarIcon
+  Calendar 
 } from "lucide-react";
 import { toast } from "sonner";
 import { useCreateJob } from "@/hooks/useVerifree";

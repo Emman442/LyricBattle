@@ -41,10 +41,6 @@ const handleCreateProfile = async () => {
       role,
     });
 
-    toast.success("Profile created!", {
-      description: "Welcome to VeriFree.",
-    });
-
     onProfileCreated();
   } catch (err) {
     console.error(err);

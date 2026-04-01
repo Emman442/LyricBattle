@@ -58,7 +58,7 @@ console.log("Fetched profile:", fetchedProfile)
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          {/* <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" /> */}
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
           <p className="text-muted-foreground font-medium animate-pulse">Please connect your wallet to continue</p>
         </div>
       </div>
@@ -67,8 +67,7 @@ console.log("Fetched profile:", fetchedProfile)
 
 
 
-  // const isClient = profile.role === "client";
-  const isClient = true;
+  const isClient = profile?.role === "client";
 
   // Stats based on role
   const stats = isClient ? [
@@ -197,86 +196,6 @@ console.log("Fetched profile:", fetchedProfile)
   );
 }
 
-function RoleSelection({ user, db }: { user: any; db: any }) {
-  const [loading, setLoading] = useState(false);
-
-  const handleSelectRole = (role: "Client" | "Freelancer") => {
-    if (!db || !user) return;
-    setLoading(true);
-
-    const profileData = {
-      id: user.uid,
-      walletAddress: user.uid,
-      username: user.uid.substring(0, 6),
-      bio: `I am a ${role} on VeriFree.`,
-      role: role,
-      reputationScore: role === "Freelancer" ? 50 : 0,
-      totalJobsCompleted: 0,
-      totalValueEscrowed: 0,
-      totalEarned: 0,
-      successRate: 0,
-      portfolioJobIds: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-  };
-
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-2 gap-8"
-      >
-        <div className="md:col-span-2 text-center mb-4">
-          <h2 className="text-4xl font-extrabold mb-4">Choose your <span className="gradient-text">destiny.</span></h2>
-          <p className="text-muted-foreground">Pick how you want to interact with the VeriFree protocol.</p>
-        </div>
-
-        <RoleCard 
-          title="I want to Hire"
-          desc="Post jobs, set success criteria, and use AI to verify deliverables automatically."
-          icon={Users}
-          color="primary"
-          onClick={() => handleSelectRole("Client")}
-          loading={loading}
-        />
-
-        <RoleCard 
-          title="I want to Work"
-          desc="Apply for jobs, build your on-chain reputation, and get paid instantly upon verification."
-          icon={Briefcase}
-          color="accent"
-          onClick={() => handleSelectRole("Freelancer")}
-          loading={loading}
-        />
-      </motion.div>
-    </div>
-  );
-}
-
-function RoleCard({ title, desc, icon: Icon, color, onClick, loading }: any) {
-  return (
-    <Card className={`group hover:border-${color} transition-all cursor-pointer overflow-hidden relative`} onClick={onClick}>
-      <CardContent className="pt-12 pb-10 px-8 text-center">
-        <div className={`w-20 h-20 bg-${color}/10 rounded-3xl flex items-center justify-center mx-auto mb-8 group-hover:scale-110 transition-transform`}>
-          <Icon className={`w-10 h-10 text-${color}`} />
-        </div>
-        <h3 className="text-2xl font-bold mb-4">{title}</h3>
-        <p className="text-muted-foreground mb-8">{desc}</p>
-        <Button variant="outline" className={`group-hover:bg-${color} group-hover:text-white transition-colors`}>
-          Select Role
-          <ArrowRight className="w-4 h-4 ml-2" />
-        </Button>
-      </CardContent>
-      {loading && (
-        <div className="absolute inset-0 bg-background/50 flex items-center justify-center">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-        </div>
-      )}
-    </Card>
-  );
-}
 
 function EmptyState({ message, actionLink, actionText }: { message: string; actionLink?: string; actionText?: string }) {
   return (

@@ -1,12 +1,12 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useMemo} from "react";
+import { useMemo } from "react";
 import VeriFree from "../lib/contracts/Verifree"
-import { getContractAddress} from "../components/genlayer/client";
+import { getContractAddress } from "../components/genlayer/client";
 import { useWallet } from "../components/genlayer/wallet";
 import type { Job, UserProfile } from "../lib/types/types";
-import {toast} from "sonner";
+import { toast } from "sonner";
 
 
 export function useVeriFreeContract(): VeriFree | null {
@@ -130,7 +130,7 @@ export function useCreateJob() {
                 throw new Error("Contract not initialized");
             }
 
-            const receipt = await contract.createJob(job_id, title, description, category, budget, deadline, is_public,milestone_titles);
+            const receipt = await contract.createJob(job_id, title, description, category, budget, deadline, is_public, milestone_titles);
             console.log("Job creation transaction receipt:", receipt);
             return receipt;
         },
@@ -205,6 +205,23 @@ export function useGetJobs() {
             return contract.getAllJobs();
         },
         enabled: !!contract,
+    });
+}
+
+
+export function useGetJobMilestones(job_id: string) {
+    const contract = useVeriFreeContract();
+
+    return useQuery({
+        queryKey: ["job_milestones", job_id],
+        queryFn: async () => {
+
+            if (!contract) {
+                throw new Error("Contract not initialized");
+            }
+            return contract.getJobMilestones(job_id);
+        },
+        enabled: !!contract && !!job_id,
     });
 }
 

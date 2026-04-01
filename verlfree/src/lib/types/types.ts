@@ -47,10 +47,20 @@ export interface JobApplication {
     ai_assignment_reason: string
 }
 
+export interface JobMilestone {
+    milestone_id: string;
+    job_id: string;
+    title: string;
+    status: "pending" | "approved" | "rejected";
+    deliverable_url: string;
+    ai_verdict: string;
+    ai_reasoning: string
+}
+
 
 export interface TransactionReceipt {
-  status: string;
-  hash: string;
-  blockNumber?: number;
-  [key: string]: any;
+    status: string;
+    hash: string;
+    blockNumber?: number;
+    [key: string]: any;
 }

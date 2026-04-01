@@ -1,13 +1,11 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import Navbar from "@/components/layout/Navbar";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
@@ -18,11 +16,9 @@ import {
   DialogDescription
 } from "@/components/ui/dialog";
 import { Search, Filter, Clock, Check, Sparkles, Users } from "lucide-react";
-import Link from "next/link";
-import { useToast } from "@/hooks/use-toast";
 import { useWallet } from "@/components/genlayer/wallet";
 import { toast } from "sonner";
-import { useGetJobs, useGetJobApplications, useApplyToJob } from "@/hooks/useVerifree";
+import { useGetJobs, useApplyToJob, useGetJobMilestones } from "@/hooks/useVerifree";
 import JobCard from "@/components/ui/JobCard";
 
 
@@ -33,28 +29,35 @@ export default function JobBoard() {
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [coverNote, setCoverNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [appliedJobIds, setAppliedJobIds] = useState<string[]>([]);
   const ApplyToJobMutation = useApplyToJob()
 
-  const handleApply = () => {
+
+  const handleApply = async () => {
+    console.log("Applying to job:", selectedJob?.job_id, "with cover note:", coverNote);
 
     try {
-
-      setIsSubmitting(true);
-
-
-      await 
-
-
+      if (!address) {
+        toast.info("Please connect your wallet to apply for jobs.");
+        return;
+      }
+      await ApplyToJobMutation.mutateAsync({
+        job_id: selectedJob.job_id,
+        cover_note: coverNote,
+      }, {
+        onSuccess(data, variables, onMutateResult, context) {
+          setIsSubmitting(false);
+          setIsApplyModalOpen(false);
+          setCoverNote("");
+          setSelectedJob(null);
+          toast.success("Weldone!, Your application has been submitted to the client.")
+        },
+      });
 
     } catch (error) {
-
+      console.error("Failed to apply to job:", error);
+      toast.error("Failed to submit application. Please try again.");
+    } finally {
     }
-
-    // setIsSubmitting(false);
-    // setIsApplyModalOpen(false);
-    // setCoverNote("");
-    // setSelectedJob(null);
 
   };
 
@@ -155,10 +158,10 @@ export default function JobBoard() {
             <Button variant="ghost" onClick={() => setIsApplyModalOpen(false)}>Cancel</Button>
             <Button
               onClick={handleApply}
-              disabled={!coverNote || isSubmitting}
+              disabled={!coverNote || ApplyToJobMutation.isPending}
               className="bg-primary min-w-[140px]"
             >
-              {isSubmitting ? "Submitting..." : "Submit Application"}
+              {ApplyToJobMutation.isPending ? "Submitting..." : "Submit Application"}
             </Button>
           </DialogFooter>
         </DialogContent>
