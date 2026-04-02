@@ -22,7 +22,6 @@ import {
   ArrowLeft, 
   CheckCircle2, 
   Wallet,
-  Calendar 
 } from "lucide-react";
 import { toast } from "sonner";
 import { useCreateJob } from "@/hooks/useVerifree";
@@ -62,7 +61,7 @@ export default function PostJob() {
     }
 
     if (!formData.budget || Number(formData.budget) <= 0) {
-      toast.error("Please enter a valid GEN budget.");
+      toast.error("Please enter a valid USDC budget.");
       return;
     }
 
@@ -75,6 +74,11 @@ export default function PostJob() {
       deadline: formData.deadline,
       is_public: formData.isPublic,
       milestone_titles: milestoneTitles, 
+    }, {
+      onSuccess(data, variables, onMutateResult, context) {
+        toast.success("Your job has been posted and is now live!");
+        window.location.href = "/jobs";
+      }
     });
   } catch (err) {
     console.error(err);

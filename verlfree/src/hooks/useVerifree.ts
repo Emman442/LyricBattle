@@ -143,7 +143,6 @@ export function useCreateJob() {
             await queryClient.invalidateQueries({
                 queryKey: ["jobs"],
             });
-            toast.success("Your job has been posted and is now live!");
         },
         onError: async (error) => {
             console.error("Error creating job:", error);
@@ -167,7 +166,9 @@ export function useApplyToJob() {
             if (!contract) {
                 throw new Error("Contract not initialized");
             }
-            return contract.ApplyForJob(job_id, cover_note);
+            const receipt = await contract.ApplyForJob(job_id, cover_note);
+            console.log("Job application transaction receipt:", receipt);
+            return receipt;
         },
 
         onSuccess: async (_, variables) => {

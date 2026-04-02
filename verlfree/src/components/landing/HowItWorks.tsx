@@ -8,7 +8,7 @@ const steps = [
   {
     icon: PlusCircle,
     title: "Post a Job",
-    desc: "Outline your project and set a budget in GEN tokens.",
+    desc: "Outline your project and set a budget in USDC tokens.",
   },
   {
     icon: FileCheck,

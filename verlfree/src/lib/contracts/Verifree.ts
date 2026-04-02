@@ -44,6 +44,7 @@ class VeriFree {
     this.client = createClient(config);
   }
 
+
     /**
      * Get a particular user profile from the contract
      * @returns a user profile object with all relevant details
@@ -169,7 +170,7 @@ class VeriFree {
     // Add more contract interaction methods as needed
 
     async createProfile(username: string, bio: string, role: "client" | "freelancer") {
-
+        await this.client.connect("studionet");
         try {
             const txHash = await this.client.writeContract({
                 address: this.contractAddress,
@@ -194,12 +195,14 @@ class VeriFree {
 
 
     async createJob(job_id: string, title: string, description: string, category: string, budget: string, deadline: string, is_public: boolean, milestone_titles: string[]) {
+        await this.client.connect("studionet");
         try {
             const txHash = await this.client.writeContract({
                 address: this.contractAddress,
                 functionName: "create_job",
                 args: [job_id, title, description, category, budget, deadline, is_public, milestone_titles],
-                value: parseEther(budget),
+                // value: parseEther(budget),
+                value: BigInt(0),
             });
 
             const receipt = await this.client.waitForTransactionReceipt({
@@ -215,6 +218,7 @@ class VeriFree {
     }
 
     async ApplyForJob(job_id: string, cover_note: string) {
+        await this.client.connect("studionet");
         try {
             const txHash = await this.client.writeContract({
                 address: this.contractAddress,

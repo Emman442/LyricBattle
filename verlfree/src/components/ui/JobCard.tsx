@@ -1,15 +1,19 @@
 import react from "react";
 import { Badge } from "@/components/ui/badge";
 import { Users, Clock, Check } from "lucide-react";
-import { useGetJobApplications } from "@/hooks/useVerifree";
+import { useGetJobApplications, useUserProfile } from "@/hooks/useVerifree";
 import { Card, CardContent } from "./card";
 import { Button } from "./button";
 import Link from "next/link";
 import { useWallet } from "../genlayer/wallet";
 import { toast } from "sonner";
+import { Job } from "@/lib/types/types";
 
-export default function JobCard({ job, setSelectedJob, setIsApplyModalOpen }: { job: any; setSelectedJob: (job: any) => void; setIsApplyModalOpen: (isOpen: boolean) => void }) {
+export default function JobCard({ job, setSelectedJob, setIsApplyModalOpen }: { job: Job; setSelectedJob: (job: any) => void; setIsApplyModalOpen: (isOpen: boolean) => void }) {
     const { address } = useWallet()
+
+    const { data: userProfile } = useUserProfile(address || "")
+    console.log("User profile data:", userProfile);
     const handleOpenApply = (job: any) => {
         if (!address) {
             toast.info("Please connect your wallet to apply for jobs.");
@@ -18,10 +22,23 @@ export default function JobCard({ job, setSelectedJob, setIsApplyModalOpen }: { 
         setSelectedJob(job);
         setIsApplyModalOpen(true);
     };
-    const isApplied = false; // Placeholder, replace with actual logic to check if the user has applied to this job
+    const isOwnJob = Boolean(
+        address &&
+        job.client &&
+        job.client.toLowerCase() === address.toLowerCase()
+    );
+
+    const isClient = Boolean(
+        address && userProfile && userProfile.role === "client"
+    );
 
     const { data: jobApplications } = useGetJobApplications(job.job_id);
     const applicantCount = jobApplications ? jobApplications.length : 0;
+
+    const isApplied = jobApplications?.some((app: any) => app.applicant
+        .toLowerCase() === address?.toLowerCase()
+    );
+
     return (
 
         <Card
@@ -50,7 +67,7 @@ export default function JobCard({ job, setSelectedJob, setIsApplyModalOpen }: { 
                     </div>
                     <div className="flex flex-row md:flex-col justify-between md:items-end gap-4 shrink-0">
                         <div className="text-left md:text-right">
-                            <p className="text-2xl font-black text-foreground">{job.escrow_amount} GEN</p>
+                            <p className="text-2xl font-black text-foreground">{job.escrow_amount} USDC</p>
                             <p className="text-xs text-muted-foreground uppercase tracking-widest">Fixed Price</p>
                         </div>
 
@@ -64,7 +81,7 @@ export default function JobCard({ job, setSelectedJob, setIsApplyModalOpen }: { 
                                 <Button asChild variant="ghost" className="text-xs">
                                     <Link href={`/jobs/${job.job_id}`}>Details</Link>
                                 </Button>
-                                <Button onClick={() => handleOpenApply(job)} className="bg-primary px-8">
+                                <Button onClick={() => handleOpenApply(job)} className="bg-primary px-8" disabled={isOwnJob || isApplied || isClient}>
                                     Apply Now
                                 </Button>
                             </div>

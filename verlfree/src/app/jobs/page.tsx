@@ -28,8 +28,7 @@ export default function JobBoard() {
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [coverNote, setCoverNote] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const ApplyToJobMutation = useApplyToJob()
+  const {mutate: ApplyToJob, isPending: isApplying} = useApplyToJob()
 
 
   const handleApply = async () => {
@@ -40,16 +39,15 @@ export default function JobBoard() {
         toast.info("Please connect your wallet to apply for jobs.");
         return;
       }
-      await ApplyToJobMutation.mutateAsync({
+      await ApplyToJob({
         job_id: selectedJob.job_id,
         cover_note: coverNote,
       }, {
         onSuccess(data, variables, onMutateResult, context) {
-          setIsSubmitting(false);
           setIsApplyModalOpen(false);
           setCoverNote("");
           setSelectedJob(null);
-          toast.success("Weldone!, Your application has been submitted to the client.")
+          toast.success("Weldone! Your application has been submitted to the client.")
         },
       });
 
@@ -96,12 +94,12 @@ export default function JobBoard() {
               </div>
             </div>
             <div>
-              <h3 className="font-bold mb-4 uppercase text-xs tracking-widest text-primary/80">Budget (GEN)</h3>
+              <h3 className="font-bold mb-4 uppercase text-xs tracking-widest text-primary/80">Budget (USDC)</h3>
               <div className="space-y-4">
                 <input type="range" className="w-full accent-primary" min="0" max="5000" />
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>0 GEN</span>
-                  <span>5000+ GEN</span>
+                  <span>0 USDC</span>
+                  <span>5000+ USDC</span>
                 </div>
               </div>
             </div>
@@ -158,10 +156,10 @@ export default function JobBoard() {
             <Button variant="ghost" onClick={() => setIsApplyModalOpen(false)}>Cancel</Button>
             <Button
               onClick={handleApply}
-              disabled={!coverNote || ApplyToJobMutation.isPending}
+              disabled={!coverNote || isApplying}
               className="bg-primary min-w-[140px]"
             >
-              {ApplyToJobMutation.isPending ? "Submitting..." : "Submit Application"}
+              {isApplying ? "Submitting..." : "Submit Application"}
             </Button>
           </DialogFooter>
         </DialogContent>

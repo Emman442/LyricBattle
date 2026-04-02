@@ -68,7 +68,7 @@ export default function Navbar() {
   const [notifications, setNotifications] = useState([
     { id: 1, title: "Job Verified", description: "Your submission for 'NFT Market' was approved.", time: "2m ago" },
     { id: 2, title: "New Job Posted", description: "A client posted a job matching your skills.", time: "1h ago" },
-    { id: 3, title: "Payment Received", description: "450 GEN has been released to your wallet.", time: "3h ago" },
+    { id: 3, title: "Payment Received", description: "450 USDC has been released to your wallet.", time: "3h ago" },
   ]);
 
   useEffect(() => {
