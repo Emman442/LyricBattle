@@ -433,3 +433,28 @@ export function useRejectFreelancer() {
         },
     });
 }
+
+export function useAIShortlist() {
+
+    const contract = useVeriFreeContract();
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            job_id, 
+        }: {
+            job_id: string;
+        }) => {
+            if (!contract) {
+                throw new Error("Contract not initialized");
+            }
+            return contract.aiShortlist(job_id);
+
+        },
+        onSuccess: async (_, variables) => {
+            await queryClient.invalidateQueries({
+                queryKey: ["job_applications"],
+            });
+        }   
+    });
+}

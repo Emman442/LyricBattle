@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useWallet } from "@/components/genlayer/wallet";
-import { useGetJobApplications, useGetJobMilestones, useJobByID, useRejectFreelancer, useSelectFreelancer, useSubmitDeliverable } from "@/hooks/useVerifree";
+import { useAIShortlist, useGetJobApplications, useGetJobMilestones, useJobByID, useRejectFreelancer, useSelectFreelancer, useSubmitDeliverable } from "@/hooks/useVerifree";
 import { toast } from "sonner";
 import { JobMilestone } from "@/lib/types/types";
 
@@ -48,10 +48,35 @@ export default function JobDetail() {
   const isAssignedFreelancer = address && jobData?.freelancer.toLocaleLowerCase() === address;
 
   const isJobActive = jobData?.status === "active" || jobData?.status === "in_progress";
-  const activeApplications = applications?.filter((app: any) => app.status === "pending") || [];
+  const activeApplications = applications?.filter((app: any) => app.status === "pending" || app.status === "shortlisted") || [];
+  const { mutate: AIShortlist, isPending: isShortlisting } = useAIShortlist()
+  const sortedApplications = [...activeApplications].sort((a: any, b: any) => {
+    const scoreA = parseFloat(a.ai_score || "0");
+    const scoreB = parseFloat(b.ai_score || "0");
+    return scoreB - scoreA;   // Highest score first
+  });
 
-  const handleAIShortlist = () => {
+  // Get the highest score value
+  const highestScore = sortedApplications.length > 0
+    ? parseFloat(sortedApplications[0].ai_score || "0")
+    : 0;
+
+    console.log("Sorted Applications with AI Scores:", sortedApplications);
+    console.log("Highest AI Score among applications:", highestScore);
+  const handleAIShortlist = async () => {
     setIsAIReordering(true);
+
+    await AIShortlist({ job_id: jobData?.job_id || "" }, {
+      onSuccess() {
+        toast.success("AI has analyzed the applications and updated the shortlist based on relevance to the job description and cover note strength.");
+      },
+      onError() {
+        toast.error("AI Shortlisting failed. Please try again.");
+      },
+      onSettled() {
+        setIsAIReordering(false);
+      }
+    });
 
   };
 
@@ -167,17 +192,16 @@ export default function JobDetail() {
                     variant="outline"
                     size="sm"
                     className="border-primary/50 text-primary hover:bg-primary/10"
-                    // onClick={handleAIShortlist}
-                    disabled={isAIReordering || !applications?.length}
+                    onClick={handleAIShortlist}
+                    disabled={isShortlisting || activeApplications.length === 0}
                   >
-                    <Sparkles className={`w-4 h-4 mr-2 ${isAIReordering ? 'animate-spin' : ''}`} />
-                    {isAIReordering ? "Analyzing..." : "AI Shortlist"}
+                    <Sparkles className={`w-4 h-4 mr-2 ${isShortlisting ? 'animate-spin' : ''}`} />
+                    {isShortlisting ? "Analyzing..." : "AI Shortlist"}
                   </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <AnimatePresence mode="popLayout">
                     {activeApplications?.map((app) => (
-
                       <motion.div
                         key={app.job_id}
                         layout
@@ -194,11 +218,11 @@ export default function JobDetail() {
                                   <AvatarFallback>{app.applicant[0]}</AvatarFallback>
                                 </Avatar>
                                 <span className="font-bold text-sm">{app.applicant}</span>
-                                {/* {app.isAIRecommended && (
+                                {Number(app.ai_score) === highestScore && (
                                   <Badge className="bg-yellow-500 text-black font-black text-[10px] h-5 px-2">
                                     AI RECOMMENDED
                                   </Badge>
-                                )} */}
+                                )}
                               </div>
                               <div className="flex items-center gap-1 text-xs text-yellow-500 font-bold">
                                 <Trophy className="w-3 h-3" />
@@ -208,14 +232,14 @@ export default function JobDetail() {
                             <p className="text-sm text-muted-foreground line-clamp-3 mb-2 italic">
                               "{app.cover_note}"
                             </p>
-                            {/* {app.isAIRecommended && (
+                            
                               <p className="text-[10px] text-yellow-600 font-bold flex items-center gap-1">
                                 <Sparkles className="w-3 h-3" />
-                                Strongest cover note with relevant experience mentioned.
+                                {app.ai_recommendation}
                               </p>
-                            )} */}
+                            
                           </div>
-                          {app.status === 'pending' && (
+                          {app.status === 'pending' || app.status === 'shortlisted' && (
                             <div className="flex md:flex-col gap-2 justify-end">
                               <Button
                                 variant="outline"
@@ -238,7 +262,7 @@ export default function JobDetail() {
                               </Button>
                             </div>
                           )}
-                          {app.status !== 'pending' && (
+                          {app.status !== 'pending' && app.status !== 'shortlisted' && (
                             <Badge className={`h-8 px-4 ${app.status === 'Selected' ? 'bg-green-500' : 'bg-muted'}`}>
                               {app.status}
                             </Badge>

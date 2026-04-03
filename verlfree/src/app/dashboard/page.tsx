@@ -17,11 +17,10 @@ import {
   Trophy,
   Rocket,
   TrendingUp,
-  ArrowRight
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useGetClientJobs, useGetFreelancerJobs, useGetJobApplications, useUserProfile } from "@/hooks/useVerifree";
+import { useAIShortlist, useGetClientJobs, useGetFreelancerJobs, useGetJobApplications, useUserProfile } from "@/hooks/useVerifree";
 import { useWallet } from "@/components/genlayer/wallet";
 import { Job } from "@/lib/types/types";
 
@@ -36,10 +35,6 @@ export default function Dashboard() {
   const { isFetching, data: fetchedProfile } = useUserProfile(address!)
   const { isFetching: isFetchingClientJobs, data: clientJobs } = useGetClientJobs(address || "");
   const { isFetching: isFetchingFreelancerJobs, data: freelancerJobs } = useGetFreelancerJobs(address || "");
-  // console.log("Client jobs data:", clientJobs);
-  // console.log("Freelancer jobs data:", freelancerJobs);
-
-
 
   // NEW: Hydration-safe state
   const [isClientMounted, setIsClientMounted] = useState(false);
@@ -51,6 +46,7 @@ export default function Dashboard() {
       setIsClientRole(true);
     }
   }, [fetchedProfile]);
+
 
   // Show loading while fetching or not mounted
   if (isFetching || !isClientMounted || !address) {
@@ -254,7 +250,7 @@ function ApplicationRow({ application, index }: { application: any; index: numbe
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-1">
                 <h3 className="text-lg font-bold group-hover:text-primary transition-colors">
-                  {jobTitleMap[application.jobId] || "Syncing Contract..."}
+                  {/* {jobTitleMap[application.jobId] || "Syncing Contract..."} */}
                 </h3>
                 <Badge className={`${statusColors[application.status]} text-white border-none text-[10px]`}>
                   {application.status}
