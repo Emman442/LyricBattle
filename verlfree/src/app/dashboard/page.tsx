@@ -20,21 +20,16 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useAIShortlist, useGetClientJobs, useGetFreelancerJobs, useGetJobApplications, useUserProfile } from "@/hooks/useVerifree";
+import { useAIShortlist, useGetClientJobs, useGetFreelancerApplications, useGetFreelancerJobs, useGetJobApplications, useUserProfile } from "@/hooks/useVerifree";
 import { useWallet } from "@/components/genlayer/wallet";
 import { Job } from "@/lib/types/types";
-
-// Mock Data for Demo Stability
-const MOCK_APPLICATIONS = [
-  { id: "app-1", jobId: "demo-job-1", status: "Shortlisted", coverNote: "Expert in Next.js and Tailwind. I built the VeriFree prototype.", appliedAt: "2024-03-20T10:00:00Z" },
-  { id: "app-2", jobId: "demo-job-2", status: "Pending", coverNote: "I've written for several major Web3 protocols.", appliedAt: "2024-03-21T14:30:00Z" },
-];
 
 export default function Dashboard() {
   const { address } = useWallet()
   const { isFetching, data: fetchedProfile } = useUserProfile(address!)
   const { isFetching: isFetchingClientJobs, data: clientJobs } = useGetClientJobs(address || "");
   const { isFetching: isFetchingFreelancerJobs, data: freelancerJobs } = useGetFreelancerJobs(address || "");
+  const {isFetching: isFetchingFreelancerApps, data: freelancerApps } = useGetFreelancerApplications(address || "")
 
   // NEW: Hydration-safe state
   const [isClientMounted, setIsClientMounted] = useState(false);
@@ -96,7 +91,7 @@ export default function Dashboard() {
   ] : [
     { label: "Total Earned", value: "12.8k", suffix: " USDC", icon: TrendingUp },
     { label: "Active Projects", value: 1, suffix: "", icon: Rocket },
-    { label: "My Applications", value: MOCK_APPLICATIONS.length, suffix: "", icon: Clock },
+    { label: "My Applications", value: freelancerApps?.length, suffix: "", icon: Clock },
     { label: "Reputation", value: "98", suffix: "", icon: Trophy },
   ];
 
@@ -160,8 +155,8 @@ export default function Dashboard() {
           <TabsList className="mb-8 bg-muted/50 p-1 flex-wrap h-auto">
             {isClient ? (
               <>
-                <TabsTrigger value="open" className="px-6">My Listings</TabsTrigger>
-                <TabsTrigger value="active" className="px-6">Active Projects</TabsTrigger>
+                <TabsTrigger value="active" className="px-6">My Listings</TabsTrigger>
+                <TabsTrigger value="in_progress" className="px-6">In Progress</TabsTrigger>
                 <TabsTrigger value="completed" className="px-6">Completed</TabsTrigger>
               </>
             ) : (
@@ -176,29 +171,31 @@ export default function Dashboard() {
           <div className="mt-4">
             {isClient ? (
               <>
-                <TabsContent value="open" className="space-y-4">
-                  {clientJobs?.filter(j => j.status === 'in_progress').map((job: Job, i) => (
-                    <JobRow key={job.job_id} job={job} index={i} />
-                  ))}
-                </TabsContent>
-                <TabsContent value="open" className="space-y-4">
+                <TabsContent value="active" className="space-y-4">
                   {clientJobs?.filter(j => j.status === 'active').map((job: Job, i) => (
                     <JobRow key={job.job_id} job={job} index={i} />
                   ))}
                 </TabsContent>
+                <TabsContent value="in_progress" className="space-y-4">
+                  {clientJobs?.filter(j => j.status === 'in_progress').map((job: Job, i) => (
+                    <JobRow key={job.job_id} job={job} index={i} />
+                  ))}
+                </TabsContent>
                 <TabsContent value="completed" className="space-y-4">
-                  <EmptyState message="No completed projects yet." />
+                  {clientJobs?.filter(j => j.status === 'completed').map((job: Job, i) => (
+                    <JobRow key={job.job_id} job={job} index={i} />
+                  ))}
                 </TabsContent>
               </>
             ) : (
               <>
                 <TabsContent value="applied" className="space-y-4">
-                  {MOCK_APPLICATIONS.map((app, i) => (
-                    <ApplicationRow key={app.id} application={app} index={i} />
+                  {freelancerApps?.map((app, i) => (
+                    <ApplicationRow key={app.job_id} application={app} index={i} />
                   ))}
                 </TabsContent>
                 <TabsContent value="active" className="space-y-4">
-                  {clientJobs?.filter(j => j.status === 'active').map((job: Job, i) => (
+                  {freelancerJobs?.filter(j => j.status === 'in_progress').map((job: Job, i) => (
                     <JobRow key={job.job_id} job={job} index={i} />
                   ))}
                 </TabsContent>
@@ -276,9 +273,9 @@ function ApplicationRow({ application, index }: { application: any; index: numbe
 
 function JobRow({ job, index }: { job: any; index: number }) {
   const statusColors: Record<string, string> = {
-    "Open": "text-blue-500 bg-blue-500/10",
-    "active": "text-green-500 bg-green-500/10",
-    "Completed": "text-primary bg-primary/10",
+    "active": "text-blue-500 bg-blue-500/10",
+    "in_progress": "text-yellow-500 bg-yellow-500/10",
+    "completed": "text-primary bg-primary/10",
   };
 
   const { data: jobApplications } = useGetJobApplications(job.job_id);
@@ -298,7 +295,9 @@ function JobRow({ job, index }: { job: any; index: number }) {
               <div className="flex items-center gap-2 mb-2">
                 <h3 className="text-lg font-bold group-hover:text-primary transition-colors">{job.title}</h3>
                 <Badge variant="outline" className={`text-[10px] border-none ${statusColors[job.status]}`}>
-                  {job.status}
+                  {job.status== "active" && "active"}
+                  {job.status== "completed" && "completed"}
+                  {job.status === "in_progress" && "in progress "}
                 </Badge>
               </div>
               <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">

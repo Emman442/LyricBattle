@@ -168,6 +168,19 @@ class VeriFree {
         }
     }
 
+    async getFreelancerApplications(freelancer_address: string): Promise<JobApplication[]> {
+        try {
+            const applications: any = await this.client.readContract({
+                address: this.contractAddress,
+                functionName: "get_freelancer_applications",
+                args: [freelancer_address],
+            });
+            return applications as JobApplication[];
+        } catch (error) {
+            console.error("Error fetching freelancer applications:", error);
+            throw new Error("Failed to fetch freelancer applications");
+        }
+    }
 
 
 

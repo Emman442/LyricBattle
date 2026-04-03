@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import VeriFree from "../lib/contracts/Verifree"
 import { getContractAddress } from "../components/genlayer/client";
 import { useWallet } from "../components/genlayer/wallet";
-import type { Job, UserProfile } from "../lib/types/types";
+import type { Job, JobApplication, UserProfile } from "../lib/types/types";
 import { toast } from "sonner";
 
 
@@ -237,6 +237,21 @@ export function useGetFreelancerJobs(freelancer_address: string) {
                 throw new Error("Contract not initialized");
             }
             return contract.getFreelancerJobs(freelancer_address);
+        },
+        enabled: !!contract && !!freelancer_address,
+    });
+}
+
+
+export function useGetFreelancerApplications(freelancer_address: string) {
+    const contract = useVeriFreeContract();
+    return useQuery<JobApplication[], Error>({
+        queryKey: ["freelancer_applications", freelancer_address],
+        queryFn: async () => {
+            if (!contract) {
+                throw new Error("Contract not initialized");
+            }
+            return contract.getFreelancerApplications(freelancer_address);
         },
         enabled: !!contract && !!freelancer_address,
     });
