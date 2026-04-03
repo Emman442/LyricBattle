@@ -7,22 +7,23 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { 
-  Wallet, 
-  Briefcase, 
-  CheckCircle2, 
-  Clock, 
-  Plus, 
-  Users, 
-  Trophy, 
+import {
+  Wallet,
+  Briefcase,
+  CheckCircle2,
+  Clock,
+  Plus,
+  Users,
+  Trophy,
   Rocket,
   TrendingUp,
   ArrowRight
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
-import { useUserProfile } from "@/hooks/useVerifree";
+import { useEffect, useState } from "react";
+import { useGetClientJobs, useGetFreelancerJobs, useGetJobApplications, useUserProfile } from "@/hooks/useVerifree";
 import { useWallet } from "@/components/genlayer/wallet";
+import { Job } from "@/lib/types/types";
 
 // Mock Data for Demo Stability
 const MOCK_APPLICATIONS = [
@@ -30,18 +31,42 @@ const MOCK_APPLICATIONS = [
   { id: "app-2", jobId: "demo-job-2", status: "Pending", coverNote: "I've written for several major Web3 protocols.", appliedAt: "2024-03-21T14:30:00Z" },
 ];
 
-const MOCK_JOBS = [
-  { id: "demo-job-1", title: "Build a Next.js 15 SaaS Dashboard", status: "Open", budget: 1500, deadline: "2024-06-15", applicantIds: ["u1", "u2", "u3"] },
-  { id: "demo-job-4", title: "Mobile UI Design", status: "Active", budget: 2000, deadline: "2024-07-01", applicantIds: ["u5"] },
-];
-
 export default function Dashboard() {
-const {address} = useWallet()
-const [profile, setProfile] = useState<any>(null);
-const [profileLoading, setProfileLoading] = useState(false);
-const {isFetching, data: fetchedProfile} = useUserProfile(address!)
+  const { address } = useWallet()
+  const { isFetching, data: fetchedProfile } = useUserProfile(address!)
+  const { isFetching: isFetchingClientJobs, data: clientJobs } = useGetClientJobs(address || "");
+  const { isFetching: isFetchingFreelancerJobs, data: freelancerJobs } = useGetFreelancerJobs(address || "");
+  // console.log("Client jobs data:", clientJobs);
+  // console.log("Freelancer jobs data:", freelancerJobs);
 
-console.log("Fetched profile:", fetchedProfile)
+
+
+  // NEW: Hydration-safe state
+  const [isClientMounted, setIsClientMounted] = useState(false);
+  const [isClientRole, setIsClientRole] = useState(false);
+
+  useEffect(() => {
+    setIsClientMounted(true);
+    if (fetchedProfile?.role === "client") {
+      setIsClientRole(true);
+    }
+  }, [fetchedProfile]);
+
+  // Show loading while fetching or not mounted
+  if (isFetching || !isClientMounted || !address) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-muted-foreground font-medium animate-pulse">
+            {isFetching ? "Syncing on-chain profile..." : "Please connect your wallet to continue"}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const isClient = isClientRole; // Use the safe state
 
 
   if (isFetching) {
@@ -66,20 +91,17 @@ console.log("Fetched profile:", fetchedProfile)
   }
 
 
-
-  const isClient = profile?.role === "client";
-
   // Stats based on role
   const stats = isClient ? [
-    { label: "Total Escrowed", value: 0|| "4.5k", suffix: " GEN", icon: Wallet },
+    { label: "Total Escrowed", value: fetchedProfile?.total_spent, suffix: " USDC", icon: Wallet },
     { label: "Active Jobs", value: 2, suffix: "", icon: Briefcase },
     { label: "Pending Applicants", value: 8, suffix: "", icon: Users },
     { label: "Success Rate", value: "100", suffix: "%", icon: CheckCircle2 },
   ] : [
-    { label: "Total Earned", value: profile.totalEarned || "12.8k", suffix: " GEN", icon: TrendingUp },
+    { label: "Total Earned", value: "12.8k", suffix: " USDC", icon: TrendingUp },
     { label: "Active Projects", value: 1, suffix: "", icon: Rocket },
     { label: "My Applications", value: MOCK_APPLICATIONS.length, suffix: "", icon: Clock },
-    { label: "Reputation", value: profile.reputationScore || "98", suffix: "", icon: Trophy },
+    { label: "Reputation", value: "98", suffix: "", icon: Trophy },
   ];
 
   return (
@@ -93,12 +115,12 @@ console.log("Fetched profile:", fetchedProfile)
                 {isClient ? "Client Mode" : "Freelancer Mode"}
               </Badge>
               <h1 className="text-3xl font-bold tracking-tight">
-                Welcome back, {profile?.username}
+                Welcome back, {fetchedProfile?.username}
               </h1>
             </div>
             <p className="text-muted-foreground">
-              {isClient 
-                ? "Manage your listings and verify project milestones." 
+              {isClient
+                ? "Manage your listings and verify project milestones."
                 : "Track your applications and active project status."}
             </p>
           </div>
@@ -154,18 +176,18 @@ console.log("Fetched profile:", fetchedProfile)
               </>
             )}
           </TabsList>
-          
+
           <div className="mt-4">
             {isClient ? (
               <>
                 <TabsContent value="open" className="space-y-4">
-                  {MOCK_JOBS.filter(j => j.status === 'Open').map((job, i) => (
-                    <JobRow key={job.id} job={job} index={i} />
+                  {clientJobs?.filter(j => j.status === 'in_progress').map((job: Job, i) => (
+                    <JobRow key={job.job_id} job={job} index={i} />
                   ))}
                 </TabsContent>
-                <TabsContent value="active" className="space-y-4">
-                  {MOCK_JOBS.filter(j => j.status === 'Active').map((job, i) => (
-                    <JobRow key={job.id} job={job} index={i} />
+                <TabsContent value="open" className="space-y-4">
+                  {clientJobs?.filter(j => j.status === 'active').map((job: Job, i) => (
+                    <JobRow key={job.job_id} job={job} index={i} />
                   ))}
                 </TabsContent>
                 <TabsContent value="completed" className="space-y-4">
@@ -180,8 +202,8 @@ console.log("Fetched profile:", fetchedProfile)
                   ))}
                 </TabsContent>
                 <TabsContent value="active" className="space-y-4">
-                  {MOCK_JOBS.filter(j => j.status === 'Active').map((job, i) => (
-                    <JobRow key={job.id} job={job} index={i} />
+                  {clientJobs?.filter(j => j.status === 'active').map((job: Job, i) => (
+                    <JobRow key={job.job_id} job={job} index={i} />
                   ))}
                 </TabsContent>
                 <TabsContent value="completed" className="space-y-4">
@@ -219,10 +241,6 @@ function ApplicationRow({ application, index }: { application: any; index: numbe
     "Rejected": "bg-destructive",
   };
 
-  const jobTitleMap: Record<string, string> = {
-    "demo-job-1": "Next.js SaaS Dashboard",
-    "demo-job-2": "Technical Content Writer",
-  };
 
   return (
     <motion.div
@@ -263,11 +281,13 @@ function ApplicationRow({ application, index }: { application: any; index: numbe
 function JobRow({ job, index }: { job: any; index: number }) {
   const statusColors: Record<string, string> = {
     "Open": "text-blue-500 bg-blue-500/10",
-    "Active": "text-green-500 bg-green-500/10",
+    "active": "text-green-500 bg-green-500/10",
     "Completed": "text-primary bg-primary/10",
   };
 
-  const applicantCount = job.applicantIds?.length || 0;
+  const { data: jobApplications } = useGetJobApplications(job.job_id);
+  const applicantCount = jobApplications ? jobApplications.length : 0;
+
 
   return (
     <motion.div
@@ -275,7 +295,7 @@ function JobRow({ job, index }: { job: any; index: number }) {
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.05 }}
     >
-      <Link href={`/jobs/${job.id}`}>
+      <Link href={`/jobs/${job.job_id}`}>
         <Card className="hover:bg-accent/5 transition-all border-border/50 group overflow-hidden">
           <CardContent className="flex flex-col md:flex-row items-center justify-between p-6 gap-6">
             <div className="flex-1">
@@ -290,7 +310,7 @@ function JobRow({ job, index }: { job: any; index: number }) {
                   <Clock className="w-4 h-4 text-primary" />
                   Due {job.deadline}
                 </span>
-                {job.status === "Open" && (
+                {job.status === "active" && (
                   <span className="flex items-center gap-1.5 font-bold text-primary">
                     <Users className="w-4 h-4" />
                     {applicantCount} applicants
@@ -300,11 +320,11 @@ function JobRow({ job, index }: { job: any; index: number }) {
             </div>
             <div className="flex items-center gap-8 w-full md:w-auto justify-between">
               <div className="text-right">
-                <p className="font-black text-xl text-foreground">{job.budget} GEN</p>
+                <p className="font-black text-xl text-foreground">{job.escrow_amount} USDC</p>
                 <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">In Escrow</p>
               </div>
               <Button size="sm" className="bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all min-w-[140px]">
-                {job.status === "Open" ? "Manage Candidates" : "View Progress"}
+                {job.status === "active" ? "Manage Candidates" : "View Progress"}
               </Button>
             </div>
           </CardContent>

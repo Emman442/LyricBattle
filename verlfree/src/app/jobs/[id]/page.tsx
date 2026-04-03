@@ -10,10 +10,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { 
-  CheckCircle2, 
-  Clock, 
-  MessageSquare, 
+import {
+  CheckCircle2,
+  Clock,
+  MessageSquare,
   ShieldCheck,
   Users,
   XCircle,
@@ -24,70 +24,78 @@ import {
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useWallet } from "@/components/genlayer/wallet";
-import { useGetJobMilestones, useJobByID } from "@/hooks/useVerifree";
-
-// Demo Data Fallback
-const MOCK_JOB_DATA: Record<string, any> = {
-  "demo-job-1": {
-    id: "demo-job-1",
-    title: "Build a Next.js 15 SaaS Dashboard",
-    category: "Web Development",
-    description: "Looking for a specialized developer to create a high-performance dashboard with real-time charting. Must use ShadCN UI and Tailwind CSS. The project requires complex state management and responsive design.",
-    budget: 1500,
-    deadline: "2024-06-15",
-    clientId: "demo-client-1",
-    status: "Open",
-    createdAt: new Date().toISOString(),
-    assignedFreelancerId: null
-  }
-};
-
-const MOCK_APPLICATIONS = [
-  { id: "app-1", freelancerId: "0x71C...4f92", coverNote: "I have 5 years of experience with React and have built multiple high-scale dashboards. Check my GitHub for examples.", status: "Pending", isAIRecommended: true },
-  { id: "app-2", freelancerId: "0x3A2...b1e8", coverNote: "Expert in ShadCN and Tailwind. I can deliver this project within 10 days with 100% test coverage.", status: "Pending", isAIRecommended: false },
-  { id: "app-3", freelancerId: "0x9D4...a2c1", coverNote: "I am interested in this project. I have worked on similar dashboards before.", status: "Pending", isAIRecommended: false },
-];
+import { useGetJobApplications, useGetJobMilestones, useJobByID, useRejectFreelancer, useSelectFreelancer, useSubmitDeliverable } from "@/hooks/useVerifree";
+import { toast } from "sonner";
+import { JobMilestone } from "@/lib/types/types";
 
 export default function JobDetail() {
   const { id } = useParams();
-  const [verifying, setVerifying] = useState(false);
   const [isAIReordering, setIsAIReordering] = useState(false);
   const [deliverableUrl, setDeliverableUrl] = useState("");
-  const [localApps, setLocalApps] = useState(MOCK_APPLICATIONS);
+  const [deliverableNote, setDeliverableNote] = useState("");
   const { address } = useWallet();
-  const {isFetching: jobLoading, data: jobData} = useJobByID(id as string);
-   const {isFetching: isLoadingJobMilestones, data: jobMilestones} = useGetJobMilestones(id as string);
+  const { isFetching: jobLoading, data: jobData } = useJobByID(id as string);
+  const { isFetching: isLoadingJobMilestones, data: jobMilestones } = useGetJobMilestones(id as string);
+  const { isFetching: isLoadingApplications, data: applications } = useGetJobApplications(id as string);
+  const { mutate: SubmitDeliverable, isPending: isSubmitting } = useSubmitDeliverable();
+  console.log("applications: ", applications)
+  const { mutate: selectFreelancer, isPending: isSelectingFreelancer } = useSelectFreelancer();
+  const { mutate: rejectFreelancer, isPending: isRejectingFreelancer } = useRejectFreelancer();
+  console.log("Job data fetched:", jobData);
   console.log("Selected Job Milestones:", jobMilestones);
 
+  const isClient = address && (jobData?.client.toLocaleLowerCase() == address);
+  const isAssignedFreelancer = address && jobData?.freelancer.toLocaleLowerCase() === address;
 
-  const isClient = address && (jobData?.client == address);
-  const isAssignedFreelancer = address && jobData?.freelancer === address;
+  const isJobActive = jobData?.status === "active" || jobData?.status === "in_progress";
+  const activeApplications = applications?.filter((app: any) => app.status === "pending") || [];
 
-  // const handleAIShortlist = () => {
-  //   setIsAIReordering(true);
+  const handleAIShortlist = () => {
+    setIsAIReordering(true);
 
-    
-  //   setTimeout(() => {
-  //     const reordered = [...localApps].sort((a, b) => (a.isAIRecommended ? -1 : 1));
-  //     setLocalApps(reordered);
-  //     setIsAIReordering(false);
-  //     toast({
-  //       title: "Shortlist Complete",
-  //       description: "Found the best fit for your requirements.",
-  //     });
-  //   }, 2000);
-  // };
+  };
 
-  // const handleSelectFreelancer = (app: any) => { }
+  const handleSelectFreelancer = async (appId: string) => {
+    await selectFreelancer({
+      job_id: jobData?.job_id || "",
+      freelancer_address: appId,
+    }, {
+      onSuccess() {
+        toast.success(`Project is now Active. Payout locked in escrow.`);
 
-  //   toast(`Project is now Active. Payout locked in escrow.`);
-  // };
+      }
+    });
+  };
 
-  // const handleRejectApplicant = (appId: string) => {
+  const handleRejectApplicant = async (appId: string) => {
 
-  // };
+    await rejectFreelancer({
+      job_id: jobData?.job_id || "",
+      freelancer_address: appId,
+    }, {
+      onSuccess() {
+        toast.success(`Applicant has been rejected.`);
+      }
+    });
 
-  // const handleSubmitDeliverable = () => {}
+  };
+
+  const handleSubmitDeliverable = async (deliverableNote: string, deliverableUrl: string) => {
+
+    await SubmitDeliverable({
+      job_id: jobData?.job_id || "",
+      deliverable_url: deliverableUrl,
+      deliverable_note: deliverableNote
+    }, {
+      onSuccess() {
+        toast.success(`Deliverables submitted. When the AI completes the verification process, the client will be notified to review the submission.`);
+        setDeliverableUrl("");
+      },
+      onError() {
+        toast.error("Failed to submit deliverable. Please try again.");
+      }
+    });
+  }
 
   const successCriteria = [
     "Fully responsive on mobile and desktop",
@@ -135,9 +143,9 @@ export default function JobDetail() {
               <div className="flex items-center gap-3 mb-4">
                 <Badge className="bg-primary/10 text-primary border-none">{jobData.category}</Badge>
                 <Badge variant="outline" className={`
-                  ${jobData.status === 'active' ? 'text-blue-500 border-blue-500/50' : 
-                    jobData.status === 'completed' ? 'text-green-500 border-green-500/50' : 
-                    'text-yellow-500 border-yellow-500/50'}
+                  ${jobData.status === 'active' ? 'text-blue-500 border-blue-500/50' :
+                    jobData.status === 'completed' ? 'text-green-500 border-green-500/50' :
+                      'text-yellow-500 border-yellow-500/50'}
                 `}>
                   {jobData.status}
                 </Badge>
@@ -153,14 +161,14 @@ export default function JobDetail() {
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Users className="w-5 h-5 text-primary" />
-                    <CardTitle className="text-lg">Applications ({localApps.length})</CardTitle>
+                    <CardTitle className="text-lg">Applications ({activeApplications?.length})</CardTitle>
                   </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="border-primary/50 text-primary hover:bg-primary/10"
                     // onClick={handleAIShortlist}
-                    disabled={isAIReordering || !localApps.length}
+                    disabled={isAIReordering || !applications?.length}
                   >
                     <Sparkles className={`w-4 h-4 mr-2 ${isAIReordering ? 'animate-spin' : ''}`} />
                     {isAIReordering ? "Analyzing..." : "AI Shortlist"}
@@ -168,9 +176,10 @@ export default function JobDetail() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <AnimatePresence mode="popLayout">
-                    {localApps.map((app) => (
+                    {activeApplications?.map((app) => (
+
                       <motion.div
-                        key={app.id}
+                        key={app.job_id}
                         layout
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
@@ -181,15 +190,15 @@ export default function JobDetail() {
                             <div className="flex items-center justify-between mb-3">
                               <div className="flex items-center gap-3">
                                 <Avatar className="w-8 h-8">
-                                  <AvatarImage src={`https://picsum.photos/seed/${app.freelancerId}/100/100`} />
-                                  <AvatarFallback>{app.freelancerId[0]}</AvatarFallback>
+                                  <AvatarImage src={`https://picsum.photos/seed/${app.applicant}/100/100`} />
+                                  <AvatarFallback>{app.applicant[0]}</AvatarFallback>
                                 </Avatar>
-                                <span className="font-bold text-sm">{app.freelancerId}</span>
-                                {app.isAIRecommended && (
+                                <span className="font-bold text-sm">{app.applicant}</span>
+                                {/* {app.isAIRecommended && (
                                   <Badge className="bg-yellow-500 text-black font-black text-[10px] h-5 px-2">
                                     AI RECOMMENDED
                                   </Badge>
-                                )}
+                                )} */}
                               </div>
                               <div className="flex items-center gap-1 text-xs text-yellow-500 font-bold">
                                 <Trophy className="w-3 h-3" />
@@ -197,37 +206,39 @@ export default function JobDetail() {
                               </div>
                             </div>
                             <p className="text-sm text-muted-foreground line-clamp-3 mb-2 italic">
-                              "{app.coverNote}"
+                              "{app.cover_note}"
                             </p>
-                            {app.isAIRecommended && (
+                            {/* {app.isAIRecommended && (
                               <p className="text-[10px] text-yellow-600 font-bold flex items-center gap-1">
                                 <Sparkles className="w-3 h-3" />
                                 Strongest cover note with relevant experience mentioned.
                               </p>
-                            )}
+                            )} */}
                           </div>
-                          {app.status === 'Pending' && (
+                          {app.status === 'pending' && (
                             <div className="flex md:flex-col gap-2 justify-end">
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
+                              <Button
+                                variant="outline"
+                                size="sm"
                                 className="text-destructive hover:bg-destructive/10"
-                                // onClick={() => handleRejectApplicant(app.id)}
+                                onClick={() => handleRejectApplicant(app.applicant)}
+                                disabled={isSelectingFreelancer || isRejectingFreelancer}
                               >
                                 <XCircle className="w-4 h-4 mr-2" />
                                 Reject
                               </Button>
-                              <Button 
-                                size="sm" 
+                              <Button
+                                size="sm"
                                 className="bg-primary"
-                                // onClick={() => handleSelectFreelancer(app)}
+                                onClick={() => handleSelectFreelancer(app.applicant)}
+                                disabled={isSelectingFreelancer || isRejectingFreelancer}
                               >
                                 <ShieldCheck className="w-4 h-4 mr-2" />
                                 Select
                               </Button>
                             </div>
                           )}
-                          {app.status !== 'Pending' && (
+                          {app.status !== 'pending' && (
                             <Badge className={`h-8 px-4 ${app.status === 'Selected' ? 'bg-green-500' : 'bg-muted'}`}>
                               {app.status}
                             </Badge>
@@ -240,7 +251,7 @@ export default function JobDetail() {
               </Card>
             )}
 
-            {jobData.status === "active" && (
+            {jobData.status === "in_progress" && (
               <Card className="border-primary/20 bg-primary/5">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
@@ -253,28 +264,28 @@ export default function JobDetail() {
                     <div className="space-y-4">
                       <div className="space-y-2">
                         <Label htmlFor="deliverable">Submission Link (GitHub, URL, etc.)</Label>
-                        <Input 
-                          id="deliverable" 
-                          placeholder="https://..." 
+                        <Input
+                          id="deliverable"
+                          placeholder="https://..."
                           value={deliverableUrl}
                           onChange={(e) => setDeliverableUrl(e.target.value)}
                         />
                         <p className="text-xs text-muted-foreground">AI will automatically crawl this link to verify against success criteria.</p>
                       </div>
-                      <Button 
-                        // onClick={handleSubmitDeliverable} 
-                        disabled={!deliverableUrl || verifying}
+                      <Button
+                        onClick={() => handleSubmitDeliverable(deliverableUrl, deliverableNote)}
+                        disabled={!deliverableUrl || isSubmitting || !deliverableNote}
                         className="w-full bg-primary py-6 text-lg font-bold"
                       >
-                        {verifying ? "Triggering AI Node..." : "Submit for Verification"}
+                        {isSubmitting ? "Submitting..." : "Submit for Verification"}
                       </Button>
                     </div>
                   ) : (
                     <div className="p-12 text-center text-muted-foreground border-2 border-dashed border-border rounded-xl">
                       <ShieldCheck className="w-12 h-12 mx-auto mb-4 opacity-20" />
                       <p className="font-medium">
-                        {isClient 
-                          ? "Contract is Active. Awaiting deliverable from the assigned freelancer." 
+                        {isClient
+                          ? "Contract is Active. Awaiting deliverable from the assigned freelancer."
                           : "You are not assigned to this job."}
                       </p>
                     </div>
@@ -343,12 +354,12 @@ export default function JobDetail() {
                 <CardTitle className="text-lg">Success Criteria</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {successCriteria.map((c, i) => (
+                {jobMilestones?.map((c: JobMilestone, i) => (
                   <div key={i} className="flex gap-3 items-start group">
                     <div className="w-5 h-5 rounded border border-primary/50 flex items-center justify-center mt-0.5 group-hover:bg-primary/10">
                       <CheckCircle2 className="w-3.5 h-3.5 text-primary opacity-20" />
                     </div>
-                    <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">{c}</span>
+                    <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">{c.title}</span>
                   </div>
                 ))}
               </CardContent>

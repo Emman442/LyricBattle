@@ -11,21 +11,17 @@ export interface UserProfile {
     joined_at: string;
 }
 
-export interface Job {
-    job_id: string;
-    title: string;
-    description: string;
-    budget: string;
-    status: "active" | "in_progress" | "completed" | "pending";
-    freelancer: string;
-    category: string;
-    deadline: string;
-    escrow_amount: string;
-    client: string;
-
+export interface JobApplication {
+    job_id: string,
+    applicant: string,
+    cover_note: string,
+    status: string,
+    ai_score: string,
+    ai_recommendation: string,
+    isAIRecommended: boolean
 }
 
-export interface JobApplication {
+export interface Job {
     job_id: string
     title: string
     description: string
@@ -35,14 +31,11 @@ export interface JobApplication {
     escrow_amount: string
     deadline: string
     is_public: boolean
-    status: string
+    status: "active" | "in_progress" | "completed" | "pending";
     deliverable_url: string
     deliverable_note: string
     ai_verdict: string
-    ai_reasoning: string
-    submitted_at: string
-    completed_at: string
-    created_at: string
+    ai_reasoning: string;
     ai_auto_assigned: boolean
     ai_assignment_reason: string
 }

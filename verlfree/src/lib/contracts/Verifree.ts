@@ -96,28 +96,32 @@ class VeriFree {
         }
     }
 
-    async getClientJobs(client_address: string): Promise<any[]> {
+    async getClientJobs(client_address: string): Promise<Job[]> {
+
+        console.log("Fetching client jobs for address:", client_address);
         try {
             const jobs: any = await this.client.readContract({
                 address: this.contractAddress,
                 functionName: "get_client_jobs",
                 args: [client_address],
             });
-            return jobs as any[];
+
+            console.log("Raw client jobs data from contract:", jobs);
+            return jobs as Job[];
         } catch (error) {
             console.error("Error fetching client jobs:", error);
             throw new Error("Failed to fetch client jobs");
         }
     }
 
-    async getFreelancerJobs(freelancer_address: string): Promise<any[]> {
+    async getFreelancerJobs(freelancer_address: string): Promise<Job[]> {
         try {
             const jobs: any = await this.client.readContract({
                 address: this.contractAddress,
                 functionName: "get_freelancer_jobs",
                 args: [freelancer_address],
             });
-            return jobs as any[];
+            return jobs as Job[];
         } catch (error) {
             console.error("Error fetching freelancer jobs:", error);
             throw new Error("Failed to fetch freelancer jobs");
