@@ -13,7 +13,6 @@ export default function JobCard({ job, setSelectedJob, setIsApplyModalOpen }: { 
     const { address } = useWallet()
 
     const { data: userProfile } = useUserProfile(address || "")
-    console.log("User profile data:", userProfile);
     const handleOpenApply = (job: any) => {
         if (!address) {
             toast.info("Please connect your wallet to apply for jobs.");

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Navbar from "@/components/layout/Navbar";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
@@ -15,11 +15,12 @@ import {
   DialogFooter,
   DialogDescription
 } from "@/components/ui/dialog";
-import { Search, Filter, Clock, Check, Sparkles, Users } from "lucide-react";
+import { Search, Filter, Clock, Sparkles, } from "lucide-react";
 import { useWallet } from "@/components/genlayer/wallet";
 import { toast } from "sonner";
-import { useGetJobs, useApplyToJob, useGetJobMilestones } from "@/hooks/useVerifree";
+import { useGetJobs, useApplyToJob } from "@/hooks/useVerifree";
 import JobCard from "@/components/ui/JobCard";
+import Link from "next/link";
 
 
 export default function JobBoard() {
@@ -28,12 +29,10 @@ export default function JobBoard() {
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [coverNote, setCoverNote] = useState("");
-  const {mutate: ApplyToJob, isPending: isApplying} = useApplyToJob()
+  const { mutate: ApplyToJob, isPending: isApplying } = useApplyToJob()
 
 
   const handleApply = async () => {
-    console.log("Applying to job:", selectedJob?.job_id, "with cover note:", coverNote);
-
     try {
       if (!address) {
         toast.info("Please connect your wallet to apply for jobs.");
@@ -58,6 +57,12 @@ export default function JobBoard() {
     }
 
   };
+
+  // Add this near the top of your component, after the hooks
+  const displayedJobs = useMemo(() => {
+    if (!jobs) return [];
+    return [...jobs].reverse();        // Create a copy first, then reverse
+  }, [jobs]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -106,7 +111,7 @@ export default function JobBoard() {
           </div>
 
           <div className="md:col-span-3 space-y-4">
-            {jobs?.map((job, i) => {
+            {displayedJobs.map((job, i) => {
 
               const applicantCount = job.job_id?.length || 0;
 
@@ -117,7 +122,11 @@ export default function JobBoard() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.1 }}
                 >
-                  <JobCard job={job} setSelectedJob={setSelectedJob} setIsApplyModalOpen={setIsApplyModalOpen} />
+                  <Link
+                    href={`/jobs/${job.job_id}`}
+                  >
+                    <JobCard job={job} setSelectedJob={setSelectedJob} setIsApplyModalOpen={setIsApplyModalOpen} />
+                  </Link>
                 </motion.div>
               );
             })}

@@ -31,7 +31,7 @@ export interface Job {
     escrow_amount: string
     deadline: string
     is_public: boolean
-    status: "active" | "in_progress" | "completed" | "pending";
+    status: "active" | "in_progress" | "completed" | "pending" | "pending_review" | "revision_requested";
     deliverable_url: string
     deliverable_note: string
     ai_verdict: string
