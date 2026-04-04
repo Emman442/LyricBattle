@@ -64,6 +64,8 @@ export default function JobBoard() {
     return [...jobs].reverse();        // Create a copy first, then reverse
   }, [jobs]);
 
+  const activeJobs = jobs?.filter(j => j.status === 'active')
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -111,10 +113,7 @@ export default function JobBoard() {
           </div>
 
           <div className="md:col-span-3 space-y-4">
-            {displayedJobs.map((job, i) => {
-
-              const applicantCount = job.job_id?.length || 0;
-
+            {activeJobs?.map((job, i) => {
               return (
                 <motion.div
                   key={job.job_id}
@@ -122,11 +121,9 @@ export default function JobBoard() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.1 }}
                 >
-                  <Link
-                    href={`/jobs/${job.job_id}`}
-                  >
-                    <JobCard job={job} setSelectedJob={setSelectedJob} setIsApplyModalOpen={setIsApplyModalOpen} />
-                  </Link>
+
+                  <JobCard job={job} setSelectedJob={setSelectedJob} setIsApplyModalOpen={setIsApplyModalOpen} />
+
                 </motion.div>
               );
             })}
@@ -165,7 +162,7 @@ export default function JobBoard() {
             <Button variant="ghost" onClick={() => setIsApplyModalOpen(false)}>Cancel</Button>
             <Button
               onClick={handleApply}
-              disabled={!coverNote || isApplying}
+              disabled={!coverNote }
               className="bg-primary min-w-[140px]"
             >
               {isApplying ? "Submitting..." : "Submit Application"}

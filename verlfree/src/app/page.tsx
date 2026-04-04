@@ -86,17 +86,17 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {
-                name: "Alex Rivera",
-                role: "Fullstack Developer",
+                name: "Emmanuel Ndema",
+                role: "Founder, Verifree",
                 quote: "VeriFree solved my biggest headache: payment delays. Now I get paid the second my code passes AI verification.",
               },
               {
-                name: "Sarah Chen",
-                role: "Founder at TechFlow",
+                name: "Godson Daniel",
+                role: "Cleaner, VeriFree",
                 quote: "Posting jobs with clear success criteria has improved our deliverable quality by 40%. The AI verification is incredibly accurate.",
               },
               {
-                name: "Marcus Wright",
+                name: "Dude",
                 role: "UI Designer",
                 quote: "The on-chain portfolio is a game changer. Clients can see my success rate and verified reviews instantly.",
               },

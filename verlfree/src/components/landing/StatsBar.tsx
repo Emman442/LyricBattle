@@ -1,6 +1,8 @@
 
 "use client";
 
+import { calculateTotalEscrowFromCompletedJobs } from "@/helpers/calculateTotalEscroeFromCompletedJobs";
+import { useGetJobs } from "@/hooks/useVerifree";
 import { motion, useInView } from "framer-motion";
 import { useRef, useState, useEffect } from "react";
 
@@ -26,9 +28,13 @@ function CountUp({ end, suffix = "", duration = 2 }: { end: number; suffix?: str
 }
 
 export default function StatsBar() {
+   const { isFetching, data: jobs } = useGetJobs();
+  
+    const completedJobs = jobs?.filter(j => j.status === 'completed')
+    const totalEscrowed = calculateTotalEscrowFromCompletedJobs(completedJobs || [])
   const stats = [
-    { label: "Total Jobs Completed", value: 12500, suffix: "+" },
-    { label: "Total Value Escrowed", value: 4.8, suffix: "M GEN" },
+    { label: "Total Jobs Completed", value: completedJobs?.length || 0, suffix: "" },
+    { label: "Total Value Escrowed", value: totalEscrowed, suffix: " USDC" },
     { label: "Average Payout Time", value: 45, suffix: " Seconds" },
   ];
 

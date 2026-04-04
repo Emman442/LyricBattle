@@ -26,8 +26,8 @@ const steps = [
     desc: "Our AI checks the work and releases funds instantly.",
   },
 ];
-
 export default function HowItWorks() {
+
   return (
     <section id="how-it-works" className="py-24 bg-card/30">
       <div className="container mx-auto px-4">

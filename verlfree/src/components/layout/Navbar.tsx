@@ -125,16 +125,13 @@ export default function Navbar() {
       }`}
     >
       <div className="container mx-auto px-4 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 group">
+        <Link href="/verifree.png" className="flex items-center gap-2 group">
           <motion.div
             whileHover={{ rotate: 10 }}
-            className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-lg shadow-primary/20"
+            className="flex items-center justify-center"
           >
-            <Shield className="w-5 h-5 text-primary-foreground" />
+            <img src="/verifree.png" alt="Verifree logo"  className="w-[130px] h-15"/>
           </motion.div>
-          <span className="text-xl font-bold tracking-tight text-foreground">
-            VeriFree
-          </span>
         </Link>
 
         {/* Desktop Links */}

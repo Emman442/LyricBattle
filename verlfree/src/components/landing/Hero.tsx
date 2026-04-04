@@ -44,7 +44,7 @@ export default function Hero() {
             className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed"
           >
             Post a job, agree on criteria, submit your work. Our AI verifies
-            delivery and releases payment instantly — no disputes, no delays,
+            delivery and releases payment instantly. no disputes, no delays,
             no middlemen.
           </motion.p>
 
@@ -99,10 +99,10 @@ export default function Hero() {
             <div className="flex justify-between items-start mb-6">
               <div>
                 <h3 className="text-xl font-bold mb-1">Modern React Landing Page</h3>
-                <p className="text-sm text-muted-foreground">Budget: 500 GEN</p>
+                <p className="text-sm text-muted-foreground">Budget: 500 USDC</p>
               </div>
               <Badge variant="outline" className="border-primary/50 text-primary">
-                In Review
+                completed
               </Badge>
             </div>
 

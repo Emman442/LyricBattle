@@ -19,19 +19,21 @@ import {
   TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { useAIShortlist, useGetClientJobs, useGetFreelancerApplications, useGetFreelancerJobs, useGetJobApplications, useUserProfile } from "@/hooks/useVerifree";
+import { useEffect, useMemo, useState } from "react";
+import { useGetClientJobs, useGetFreelancerApplications, useGetFreelancerJobs, useGetJobApplications, useGetJobs, useUserProfile } from "@/hooks/useVerifree";
 import { useWallet } from "@/components/genlayer/wallet";
-import { Job } from "@/lib/types/types";
+import { Job, JobApplication } from "@/lib/types/types";
 
 export default function Dashboard() {
-  const { address } = useWallet()
-  const { isFetching, data: fetchedProfile } = useUserProfile(address!)
-  const { isFetching: isFetchingClientJobs, data: clientJobs } = useGetClientJobs(address || "");
-  const { isFetching: isFetchingFreelancerJobs, data: freelancerJobs } = useGetFreelancerJobs(address || "");
-  const {isFetching: isFetchingFreelancerApps, data: freelancerApps } = useGetFreelancerApplications(address || "")
+  const { address } = useWallet();
 
-  // NEW: Hydration-safe state
+  // ALL HOOKS MUST BE AT THE TOP
+  const { isFetching: isFetchingProfile, data: fetchedProfile } = useUserProfile(address!);
+  const { isFetching: isFetchingClientJobs, data: clientJobs = [] } = useGetClientJobs(address || "");
+  const { isFetching: isFetchingFreelancerJobs, data: freelancerJobs = [] } = useGetFreelancerJobs(address || "");
+  const { isFetching: isFetchingFreelancerApps, data: freelancerApps = [] } = useGetFreelancerApplications(address || "");
+  const { data: jobs = [] } = useGetJobs();
+
   const [isClientMounted, setIsClientMounted] = useState(false);
   const [isClientRole, setIsClientRole] = useState(false);
 
@@ -42,25 +44,34 @@ export default function Dashboard() {
     }
   }, [fetchedProfile]);
 
+  // Create job lookup map
+  const jobMap = useMemo(() => {
+    const map: Record<string, any> = {};
+    jobs.forEach((job: any) => {
+      if (job.job_id) map[job.job_id] = job;
+    });
+    return map;
+  }, [jobs]);
+
 
   // Show loading while fetching or not mounted
-  if (isFetching || !isClientMounted || !address) {
+  if (isFetchingProfile || !isClientMounted || !address) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
           <p className="text-muted-foreground font-medium animate-pulse">
-            {isFetching ? "Syncing on-chain profile..." : "Please connect your wallet to continue"}
+            {isFetchingProfile ? "Syncing on-chain profile..." : "Please connect your wallet to continue"}
           </p>
         </div>
       </div>
     );
   }
 
-  const isClient = isClientRole; // Use the safe state
+  const isClient = isClientRole;
 
 
-  if (isFetching) {
+  if (isFetchingProfile) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -87,12 +98,12 @@ export default function Dashboard() {
     { label: "Total Escrowed", value: fetchedProfile?.total_spent, suffix: " USDC", icon: Wallet },
     { label: "Active Jobs", value: 2, suffix: "", icon: Briefcase },
     { label: "Pending Applicants", value: 8, suffix: "", icon: Users },
-    { label: "Success Rate", value: "100", suffix: "%", icon: CheckCircle2 },
+    { label: "Success Rate", value: fetchedProfile?.reputation_score, suffix: "%", icon: CheckCircle2 },
   ] : [
-    { label: "Total Earned", value: "12.8k", suffix: " USDC", icon: TrendingUp },
+    { label: "Total Earned", value: fetchedProfile?.total_earned, suffix: " USDC", icon: TrendingUp },
     { label: "Active Projects", value: 1, suffix: "", icon: Rocket },
     { label: "My Applications", value: freelancerApps?.length, suffix: "", icon: Clock },
-    { label: "Reputation", value: "98", suffix: "", icon: Trophy },
+    { label: "Reputation", value: fetchedProfile?.reputation_score, suffix: "", icon: Trophy },
   ];
 
   return (
@@ -151,7 +162,7 @@ export default function Dashboard() {
           ))}
         </div>
 
-        <Tabs defaultValue={isClient ? "open" : "applied"} className="w-full">
+        <Tabs defaultValue={isClient ? "active" : "applied"} className="w-full">
           <TabsList className="mb-8 bg-muted/50 p-1 flex-wrap h-auto">
             {isClient ? (
               <>
@@ -162,7 +173,7 @@ export default function Dashboard() {
             ) : (
               <>
                 <TabsTrigger value="applied" className="px-6">Applied Jobs</TabsTrigger>
-                <TabsTrigger value="active" className="px-6">Active Projects</TabsTrigger>
+                <TabsTrigger value="selected" className="px-6">Active Projects</TabsTrigger>
                 <TabsTrigger value="completed" className="px-6">Completed</TabsTrigger>
               </>
             )}
@@ -190,24 +201,34 @@ export default function Dashboard() {
             ) : (
               <>
                 <TabsContent value="applied" className="space-y-4">
-                  {freelancerApps?.map((app, i) => (
-                    <ApplicationRow key={app.job_id} application={app} index={i} />
+                  {freelancerApps?.map((app: any, i: number) => (
+                    <ApplicationRow
+                      key={app.job_id || i}
+                      application={app}
+                      job={jobMap[app.job_id]}   // ← Pass the matched job
+                      index={i}
+                    />
                   ))}
                 </TabsContent>
+
                 <TabsContent value="active" className="space-y-4">
-                  {freelancerJobs?.filter(j => j.status === 'in_progress').map((job: Job, i) => (
+                  {freelancerJobs.filter(j => j.status == 'in_progress').map((job: Job, i) => (
                     <JobRow key={job.job_id} job={job} index={i} />
                   ))}
                 </TabsContent>
+      
+
                 <TabsContent value="completed" className="space-y-4">
-                  <EmptyState message="No completed projects yet." />
+                  {freelancerJobs?.filter(j => j.status === 'completed').map((job: Job, i) => (
+                    <JobRow key={job.job_id} job={job} index={i} />
+                  ))}
                 </TabsContent>
               </>
             )}
           </div>
         </Tabs>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 }
 
@@ -226,14 +247,32 @@ function EmptyState({ message, actionLink, actionText }: { message: string; acti
   );
 }
 
-function ApplicationRow({ application, index }: { application: any; index: number }) {
+function ApplicationRow({
+  application,
+  job,
+  index
+}: {
+  application: any;
+  job?: any;
+  index: number;
+}) {
   const statusColors: Record<string, string> = {
-    "Pending": "bg-yellow-500",
-    "Shortlisted": "bg-accent",
-    "Selected": "bg-green-500",
-    "Rejected": "bg-destructive",
+    "pending": "bg-yellow-500",
+    "shortlisted": "bg-blue-500",
+    "selected": "bg-green-500",
+    "rejected": "bg-red-500",
   };
 
+  const statusLabels: Record<string, string> = {
+    "pending": "Pending",
+    "shortlisted": "Shortlisted",
+    "selected": "Selected",
+    "rejected": "Rejected",
+  };
+
+  const currentStatus = (application.status || "pending").toLowerCase();
+  const displayStatus = statusLabels[currentStatus] || currentStatus;
+  const badgeColor = statusColors[currentStatus] || "bg-gray-500";
 
   return (
     <motion.div
@@ -241,35 +280,38 @@ function ApplicationRow({ application, index }: { application: any; index: numbe
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.05 }}
     >
-      <Link href={`/jobs/${application.jobId}`}>
+      <Link href={`/jobs/${application.job_id}`}>
         <Card className="hover:bg-accent/5 transition-all border-border/50 group">
           <CardContent className="flex items-center justify-between p-6">
             <div className="flex-1">
-              <div className="flex items-center gap-3 mb-1">
+              <div className="flex items-center gap-3 mb-2">
                 <h3 className="text-lg font-bold group-hover:text-primary transition-colors">
-                  {/* {jobTitleMap[application.jobId] || "Syncing Contract..."} */}
+                  {job?.title || "Unknown Job"}
                 </h3>
-                <Badge className={`${statusColors[application.status]} text-white border-none text-[10px]`}>
-                  {application.status}
+                <Badge className={`${badgeColor} text-white border-none text-[10px]`}>
+                  {displayStatus}
                 </Badge>
               </div>
-              <p className="text-sm text-muted-foreground line-clamp-1 italic">"{application.coverNote}"</p>
+
+              <p className="text-sm text-muted-foreground line-clamp-2 italic">
+                "{application.cover_note || "No cover note provided"}"
+              </p>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="text-right hidden sm:block">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Applied On</p>
-                <p className="text-sm font-medium">{new Date(application.appliedAt).toLocaleDateString()}</p>
-              </div>
-              <Button size="sm" variant="ghost" className="group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                View Job
-              </Button>
-            </div>
+
+            <Button
+              size="sm"
+              variant="ghost"
+              className="group-hover:bg-primary/10 group-hover:text-primary transition-colors"
+            >
+              View Job
+            </Button>
           </CardContent>
         </Card>
       </Link>
     </motion.div>
   );
 }
+
 
 function JobRow({ job, index }: { job: any; index: number }) {
   const statusColors: Record<string, string> = {
@@ -295,8 +337,8 @@ function JobRow({ job, index }: { job: any; index: number }) {
               <div className="flex items-center gap-2 mb-2">
                 <h3 className="text-lg font-bold group-hover:text-primary transition-colors">{job.title}</h3>
                 <Badge variant="outline" className={`text-[10px] border-none ${statusColors[job.status]}`}>
-                  {job.status== "active" && "active"}
-                  {job.status== "completed" && "completed"}
+                  {job.status == "active" && "active"}
+                  {job.status == "completed" && "completed"}
                   {job.status === "in_progress" && "in progress "}
                 </Badge>
               </div>

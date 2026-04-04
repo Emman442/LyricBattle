@@ -189,6 +189,7 @@ export default function PostJob() {
                         placeholder="0.00"
                         value={formData.budget}
                         onChange={(e) => setFormData({...formData, budget: e.target.value})}
+                        required={true}
                       />
                     </div>
                     <div className="space-y-2">
@@ -197,6 +198,7 @@ export default function PostJob() {
                         type="date"
                         value={formData.deadline}
                         onChange={(e) => setFormData({...formData, deadline: e.target.value})}
+                        required={true}
                       />
                     </div>
                   </div>

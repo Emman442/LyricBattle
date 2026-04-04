@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Navbar from "@/components/layout/Navbar";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
@@ -29,10 +29,13 @@ import {
 } from "@/hooks/useVerifree";
 import { toast } from "sonner";
 import { JobMilestone } from "@/lib/types/types";
+import { useQueryClient } from "@tanstack/react-query";
+import { parseAIVerification } from "@/helpers/parseAIVerificationResult";
 
 export default function JobDetail() {
   const { id } = useParams();
   const { address } = useWallet();
+  const queryClient = useQueryClient();
 
   // State
   const [deliverableUrl, setDeliverableUrl] = useState("");
@@ -73,13 +76,15 @@ export default function JobDetail() {
     ? parseFloat(sortedApplications[0].ai_score || "0")
     : 0;
 
+  const aiResult = useMemo(() => {
+    return parseAIVerification(jobData?.ai_reasoning || "");
+  }, [jobData?.ai_reasoning]);
+
   // Handlers
   const handleAIShortlist = async () => {
-    setIsAIReordering(true);
     await AIShortlist({ job_id: jobData?.job_id || "" }, {
       onSuccess() { toast.success("AI shortlist completed successfully.") },
-      onError: () => toast.error("AI shortlisting failed."),
-      onSettled: () => setIsAIReordering(false),
+      onError() { toast.error("AI shortlisting failed.") },
     });
   };
 
@@ -97,7 +102,13 @@ export default function JobDetail() {
       job_id: jobData?.job_id || "",
       deliverable_url: deliverableUrl,
       deliverable_note: deliverableNote,
-    }, { onSuccess() { toast.success("Deliverable submitted successfully.") }, onError() { toast.error("Failed to submit deliverable.") } });
+    }, {
+      onSuccess() {
+        toast.success("Deliverable submitted successfully.");
+        queryClient.invalidateQueries({ queryKey: ["jobByID", id as string] });
+      },
+      onError() { toast.error("Failed to submit deliverable.") }
+    });
   };
 
   const handleRunAIVerification = () => {
@@ -148,8 +159,6 @@ export default function JobDetail() {
     );
   }
 
-  console.log("Job Data:", jobData);
-
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -197,8 +206,7 @@ export default function JobDetail() {
                           layout
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
-                          className={`p-4 rounded-xl border transition-all ${isHighest ? "border-yellow-500/50 ring-1 ring-yellow-500/20" : "border-border"
-                            }`}
+                          className={`p-4 rounded-xl border transition-all ${isHighest ? "border-yellow-500/50 ring-1 ring-yellow-500/20" : "border-border"}`}
                         >
                           <div className="flex flex-col md:flex-row gap-6">
                             <div className="flex-1">
@@ -255,125 +263,164 @@ export default function JobDetail() {
             {(jobData.status === "in_progress" ||
               jobData.status === "pending_review" ||
               jobData.status === "revision_requested") && (
-                <Card className="border-primary/20 bg-primary/5">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Rocket className="w-5 h-5 text-primary" />
-                      Deliverable & Verification
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    {/* Freelancer Submit Deliverable */}
-                    {isAssignedFreelancer && jobData.status === "in_progress" && (
+              <Card className="border-primary/20 bg-primary/5">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Rocket className="w-5 h-5 text-primary" />
+                    Deliverable & Verification
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Freelancer Submit */}
+                  {isAssignedFreelancer && jobData.status === "in_progress" && (
+                    <div className="space-y-4">
+                      <div>
+                        <Label>Submission URL</Label>
+                        <Input
+                          placeholder="https://github.com/..."
+                          value={deliverableUrl}
+                          onChange={(e) => setDeliverableUrl(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label>Notes (optional)</Label>
+                        <Textarea
+                          placeholder="Any additional notes for the client..."
+                          value={deliverableNote}
+                          onChange={(e) => setDeliverableNote(e.target.value)}
+                          rows={4}
+                        />
+                      </div>
+                      <Button
+                        onClick={handleSubmitDeliverable}
+                        disabled={!deliverableUrl || isSubmitting}
+                        className="w-full"
+                      >
+                        {isSubmitting ? "Submitting..." : "Submit Deliverable"}
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Client - Run AI Verification */}
+                  {isClient && jobData.status === "pending_review" && (
+                    <div className="space-y-6">
+                      <div className="p-6 bg-card rounded-xl border">
+                        <h3 className="font-semibold mb-3">Submitted Deliverable</h3>
+                        <p><strong>URL:</strong> {jobData.deliverable_url}</p>
+                        {jobData.deliverable_note && <p><strong>Note:</strong> {jobData.deliverable_note}</p>}
+                      </div>
+
+                      <Button
+                        onClick={handleRunAIVerification}
+                        disabled={isVerifying}
+                        className="w-full bg-primary py-6 text-lg font-bold"
+                      >
+                        {isVerifying ? "Running AI Verification..." : "Run AI Verification & Pay"}
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Freelancer - Being Reviewed */}
+                  {isAssignedFreelancer && jobData.status === "pending_review" && (
+                    <div className="p-12 text-center border-2 border-dashed border-border rounded-2xl">
+                      <ShieldCheck className="w-16 h-16 mx-auto mb-6 text-primary/60" />
+                      <h3 className="text-xl font-medium mb-2">Your work is being reviewed</h3>
+                      <p className="text-muted-foreground max-w-md mx-auto">
+                        The client and AI are currently reviewing your submission.
+                        You will be notified once the verification is complete.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Freelancer - Raise Dispute */}
+                  {isAssignedFreelancer && jobData.status === "revision_requested" && (
+                    <div className="space-y-6">
+                      <div className="p-6 bg-red-500/5 border border-red-500/30 rounded-xl">
+                        <h3 className="font-semibold text-red-500 mb-2">Revision Requested</h3>
+                        <p className="text-sm">{jobData.ai_reasoning}</p>
+                      </div>
+
                       <div className="space-y-4">
-                        <div>
-                          <Label>Submission URL</Label>
-                          <Input
-                            placeholder="https://github.com/..."
-                            value={deliverableUrl}
-                            onChange={(e) => setDeliverableUrl(e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label>Notes (optional)</Label>
-                          <Textarea
-                            placeholder="Any additional notes for the client..."
-                            value={deliverableNote}
-                            onChange={(e) => setDeliverableNote(e.target.value)}
-                            rows={4}
-                          />
-                        </div>
+                        <Label>Evidence / Context URL</Label>
+                        <Input
+                          placeholder="https://..."
+                          value={disputeContextUrl}
+                          onChange={(e) => setDisputeContextUrl(e.target.value)}
+                        />
+                        <Label>Your Explanation</Label>
+                        <Textarea
+                          placeholder="Explain why this should be accepted..."
+                          value={disputeExplanation}
+                          onChange={(e) => setDisputeExplanation(e.target.value)}
+                          rows={5}
+                        />
                         <Button
-                          onClick={handleSubmitDeliverable}
-                          disabled={!deliverableUrl || isSubmitting}
+                          onClick={handleRaiseDispute}
+                          disabled={isRaisingDispute || !disputeContextUrl || !disputeExplanation}
                           className="w-full"
                         >
-                          {isSubmitting ? "Submitting..." : "Submit Deliverable"}
+                          {isRaisingDispute ? "Raising Dispute..." : "Raise Dispute"}
                         </Button>
                       </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* STANDALONE AI VERDICT CARD - This is the important part */}
+            {(jobData.ai_verdict === "passed" || jobData.ai_verdict === "failed") && (
+              <Card className={`border ${
+                jobData.ai_verdict === "passed" 
+                  ? "border-green-500/50 bg-green-500/5" 
+                  : "border-red-500/50 bg-red-500/5"
+              }`}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-3 text-lg">
+                    {jobData.ai_verdict === "passed" ? (
+                      <CheckCircle2 className="w-6 h-6 text-green-500" />
+                    ) : (
+                      <XCircle className="w-6 h-6 text-red-500" />
                     )}
+                    AI Verification Result
+                    <Badge variant={jobData.ai_verdict === "passed" ? "default" : "destructive"} className="ml-auto">
+                      {jobData.ai_verdict.toUpperCase()} • Score: {aiResult?.score || "N/A"}
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6 pt-0">
+                  <div>
+                    <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">
+                      {jobData.ai_reasoning || aiResult?.reasoning || "No detailed reasoning provided."}
+                    </p>
+                  </div>
 
-                    {/* Client - Run AI Verification */}
-                    {isClient && jobData.status === "pending_review" && (
-                      <div className="space-y-6">
-                        <div className="p-6 bg-card rounded-xl border">
-                          <h3 className="font-semibold mb-3">Submitted Deliverable</h3>
-                          <p><strong>URL:</strong> {jobData.deliverable_url}</p>
-                          {jobData.deliverable_note && <p><strong>Note:</strong> {jobData.deliverable_note}</p>}
-                        </div>
-
-                        <Button
-                          onClick={handleRunAIVerification}
-                          disabled={isVerifying}
-                          className="w-full bg-primary py-6 text-lg font-bold"
-                        >
-                          {isVerifying ? "Running AI Verification..." : "Run AI Verification & Pay"}
-                        </Button>
+                  {aiResult?.milestoneChecks?.length > 0 && (
+                    <div>
+                      <h4 className="font-medium mb-3">Milestone Breakdown</h4>
+                      <div className="space-y-3">
+                        {aiResult.milestoneChecks.map((check: any, i: number) => (
+                          <div key={i} className="flex items-start gap-3 text-sm border-l-2 border-muted pl-3">
+                            {check.verdict === "YES" ? (
+                              <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
+                            ) : (
+                              <XCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+                            )}
+                            <div className="flex-1">
+                              <p className="font-medium">{check.item}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">{check.milestoneId}</p>
+                            </div>
+                            <Badge variant={check.verdict === "YES" ? "default" : "destructive"}>
+                              {check.verdict}
+                            </Badge>
+                          </div>
+                        ))}
                       </div>
-                    )}
-
-                    {isAssignedFreelancer && jobData.status === "pending_review" && (
-                      <div className="p-12 text-center border-2 border-dashed border-border rounded-2xl">
-                        <ShieldCheck className="w-16 h-16 mx-auto mb-6 text-primary/60" />
-                        <h3 className="text-xl font-medium mb-2">Your work is being reviewed</h3>
-                        <p className="text-muted-foreground max-w-md mx-auto">
-                          The client and AI are currently reviewing your submission.
-                          You will be notified once the verification is complete.
-                        </p>
-                      </div>
-                    )}
-
-
-                    {/* AI Verdict Display */}
-                    {(jobData.ai_verdict === "passed" || jobData.ai_verdict === "failed") && (
-                      <div className={`p-6 rounded-xl border ${jobData.ai_verdict === "passed"
-                        ? "border-green-500/50 bg-green-500/5"
-                        : "border-red-500/50 bg-red-500/5"
-                        }`}>
-                        <h3 className="font-semibold mb-2">
-                          AI Verdict: {jobData.ai_verdict === "passed" ? "✅ PASSED" : "❌ FAILED"}
-                        </h3>
-                        <p className="text-sm whitespace-pre-wrap text-muted-foreground">
-                          {jobData.ai_reasoning}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Freelancer - Raise Dispute */}
-                    {isAssignedFreelancer && jobData.status === "revision_requested" && (
-                      <div className="space-y-6">
-                        <div className="p-6 bg-red-500/5 border border-red-500/30 rounded-xl">
-                          <h3 className="font-semibold text-red-500 mb-2">Revision Requested</h3>
-                          <p className="text-sm">{jobData.ai_reasoning}</p>
-                        </div>
-
-                        <div className="space-y-4">
-                          <Label>Evidence / Context URL</Label>
-                          <Input
-                            placeholder="https://..."
-                            value={disputeContextUrl}
-                            onChange={(e) => setDisputeContextUrl(e.target.value)}
-                          />
-                          <Label>Your Explanation</Label>
-                          <Textarea
-                            placeholder="Explain why this should be accepted..."
-                            value={disputeExplanation}
-                            onChange={(e) => setDisputeExplanation(e.target.value)}
-                            rows={5}
-                          />
-                          <Button
-                            onClick={handleRaiseDispute}
-                            disabled={isRaisingDispute || !disputeContextUrl || !disputeExplanation}
-                            className="w-full"
-                          >
-                            {isRaisingDispute ? "Raising Dispute..." : "Raise Dispute"}
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Project Log */}
             <Card>
