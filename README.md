@@ -130,7 +130,7 @@ well structured and easy to read" is evaluated for meaning, not keywords.
 
 ---
 Studio Contract Address - 0x4E5486Dc7d77C056a6E34D0dA760EeBE17Ce8D2F </br>
-Bradbury Contract Address - 0x113bf9B5B9a35f3d9109D139dAF8E7B45E90dE9E 
+Bradbury Contract Address - 0x113bf9B5B9a35f3d9109D139dAF8E7B45E90dE9E</br>
 ---
 
 ## Getting Started
